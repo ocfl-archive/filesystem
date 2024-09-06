@@ -5,11 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/je4/certloader/v2/pkg/loader"
+	loaderConfig "github.com/je4/certloader/v2/pkg/loader"
 	"github.com/je4/filesystem/v3/config"
 	"github.com/je4/filesystem/v3/pkg/remotefs"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/miniresolver/v2/pkg/resolver"
-	loaderConfig "github.com/je4/trustutil/v2/pkg/config"
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger"
@@ -46,7 +46,7 @@ func main() {
 		LogLevel:                "DEBUG",
 		ResolverTimeout:         configutil.Duration(10 * time.Minute),
 		ResolverNotFoundTimeout: configutil.Duration(10 * time.Second),
-		ClientTLS: &loaderConfig.TLSConfig{
+		ClientTLS: &loaderConfig.Config{
 			Type: "DEV",
 		},
 	}
