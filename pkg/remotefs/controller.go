@@ -70,6 +70,7 @@ func (ctrl *mainController) Init(tlsConfig *tls.Config) error {
 
 	ctrl.router.GET("/:vfs/*path", ctrl.read)
 	ctrl.router.PUT("/:vfs/*path", ctrl.create)
+	ctrl.router.POST("/:vfs/*path", ctrl.create)
 	ctrl.router.DELETE("/:vfs/*path", ctrl.delete)
 
 	ctrl.server = http.Server{
@@ -215,6 +216,7 @@ func (ctrl *mainController) read(c *gin.Context) {
 }
 
 func (ctrl *mainController) create(c *gin.Context) {
+
 	vfs := c.Param("vfs")
 	path := strings.Trim(c.Param("path"), "/")
 
@@ -222,11 +224,22 @@ func (ctrl *mainController) create(c *gin.Context) {
 	ctrl.logger.Debug().Str("vfsPath", vfsPath).Msg("create")
 	_, err := fs.Stat(ctrl.vfs, vfsPath)
 	if !errors.Is(err, fs.ErrNotExist) {
-		ctrl.logger.Error().Err(err).Msgf("'%s' already exists", vfsPath)
-		c.AbortWithStatusJSON(http.StatusConflict, gin.H{
-			"error": fmt.Sprintf("'%s' already exists", vfsPath),
-		})
-		return
+		ctrl.logger.Info().Err(err).Msgf("'%s' already exists", vfsPath)
+		if c.Request.Method == "PUT" {
+			if err := writefs.Remove(ctrl.vfs, vfsPath); err != nil {
+				ctrl.logger.Error().Err(err).Msgf("cannot remove '%s'", vfsPath)
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+					"error": fmt.Sprintf("cannot remove '%s': %v", vfsPath, err),
+				})
+				return
+			}
+		} else {
+			ctrl.logger.Error().Err(err).Msgf("'%s' already exists", vfsPath)
+			c.AbortWithStatusJSON(http.StatusConflict, gin.H{
+				"error": fmt.Sprintf("'%s' already exists", vfsPath),
+			})
+			return
+		}
 	}
 	fp, err := writefs.Create(ctrl.vfs, vfsPath)
 	if err != nil {

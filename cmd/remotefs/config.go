@@ -3,7 +3,7 @@ package main
 import (
 	"emperror.dev/errors"
 	"github.com/BurntSushi/toml"
-	loaderConfig "github.com/je4/certloader/v2/pkg/loader"
+	"github.com/je4/certloader/v2/pkg/loader"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/stashconfig"
@@ -19,8 +19,8 @@ type RemoteFSConfig struct {
 	ResolverAddr            string                `toml:"resolveraddr"`
 	ResolverTimeout         config.Duration       `toml:"resolvertimeout"`
 	ResolverNotFoundTimeout config.Duration       `toml:"resolvernotfoundtimeout"`
-	WebTLS                  loaderConfig.Config   `toml:"webtls"`
-	ClientTLS               *loaderConfig.Config  `toml:"client"`
+	WebTLS                  loader.Config         `toml:"webtls"`
+	ClientTLS               *loader.Config        `toml:"client"`
 	LogFile                 string                `toml:"logfile"`
 	LogLevel                string                `toml:"loglevel"`
 	VFS                     map[string]*vfsrw.VFS `toml:"vfs"`

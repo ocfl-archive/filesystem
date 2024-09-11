@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/je4/certloader/v2/pkg/loader"
-	loaderConfig "github.com/je4/certloader/v2/pkg/loader"
 	"github.com/je4/filesystem/v3/config"
 	"github.com/je4/filesystem/v3/pkg/remotefs"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
@@ -46,7 +45,7 @@ func main() {
 		LogLevel:                "DEBUG",
 		ResolverTimeout:         configutil.Duration(10 * time.Minute),
 		ResolverNotFoundTimeout: configutil.Duration(10 * time.Second),
-		ClientTLS: &loaderConfig.Config{
+		ClientTLS: &loader.Config{
 			Type: "DEV",
 		},
 	}
