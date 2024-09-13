@@ -13,10 +13,11 @@ import (
 	"golang.org/x/exp/slices"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 )
 
-func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug bool, tlsConfig *tls.Config, logger zLogger.ZLogger) (*s3FSRW, error) {
+func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug bool, tlsConfig *tls.Config, dnsNetwork, dnsAddress string, logger zLogger.ZLogger) (*s3FSRW, error) {
 	_logger := logger.With().Str("class", "s3FSRW").Logger()
 	var err error
 	fs := &s3FSRW{
@@ -27,7 +28,29 @@ func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug 
 		logger:   zLogger.NewZWrapper(&_logger),
 	}
 
-	var tr http.RoundTripper = &http.Transport{TLSClientConfig: tlsConfig}
+	var tr http.RoundTripper = &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	if dnsAddress != "" {
+		if dnsNetwork == "" {
+			dnsNetwork = "udp"
+		}
+		logger.Debug().Msgf("using DNS resolver %s:%s", dnsNetwork, dnsAddress)
+		d := net.Dialer{}
+		dialer := &net.Dialer{
+			Resolver: &net.Resolver{
+				PreferGo: true,
+				Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+					return d.DialContext(ctx, dnsNetwork, dnsAddress)
+				},
+			},
+		}
+		dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.DialContext(ctx, network, addr)
+		}
+		tr.(*http.Transport).DialContext = dialContext
+	}
+
 	if debug {
 		tr = NewDebuggingRoundTripper(
 			&http.Transport{

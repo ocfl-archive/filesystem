@@ -116,7 +116,7 @@ func newS3(name string, cfg *S3, logger zLogger.ZLogger) (fs.FS, error) {
 		}
 	}
 
-	rFS, err := s3fsrw.NewFS(string(cfg.Endpoint), string(cfg.AccessKeyID), string(cfg.SecretAccessKey), string(cfg.Region), cfg.UseSSL, cfg.Debug, tlsConfig, logger)
+	rFS, err := s3fsrw.NewFS(string(cfg.Endpoint), string(cfg.AccessKeyID), string(cfg.SecretAccessKey), string(cfg.Region), cfg.UseSSL, cfg.Debug, tlsConfig, cfg.DNSNetwork, cfg.DNSAddress, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create s3fsrw")
 	}

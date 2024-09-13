@@ -35,6 +35,8 @@ type S3 struct {
 	CAPEM            string
 	BaseUrl          string
 	ZipAsFolderCache uint
+	DNSNetwork       string
+	DNSAddress       string
 }
 
 type VFS struct {
