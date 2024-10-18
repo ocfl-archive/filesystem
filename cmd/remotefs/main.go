@@ -4,14 +4,14 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/je4/certloader/v2/pkg/loader"
 	"github.com/je4/filesystem/v3/config"
 	"github.com/je4/filesystem/v3/pkg/remotefs"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/miniresolver/v2/pkg/resolver"
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"io"
 	"io/fs"
 	"log"
@@ -69,12 +69,15 @@ func main() {
 		defer loggerLoader.Close()
 	}
 
-	_logger, _logstash, _logfile := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
+	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(conf.Log.Level, conf.Log.File,
 		ublogger.SetDataset(conf.Log.Stash.Dataset),
 		ublogger.SetLogStash(conf.Log.Stash.LogstashHost, conf.Log.Stash.LogstashPort, conf.Log.Stash.Namespace, conf.Log.Stash.LogstashTraceLevel),
 		ublogger.SetTLS(conf.Log.Stash.TLS != nil),
 		ublogger.SetTLSConfig(loggerTLSConfig),
 	)
+	if err != nil {
+		log.Fatalf("cannot create logger: %v", err)
+	}
 	if _logstash != nil {
 		defer _logstash.Close()
 	}

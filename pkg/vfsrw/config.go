@@ -1,7 +1,7 @@
 package vfsrw
 
 import "github.com/je4/utils/v2/pkg/config"
-import "github.com/je4/certloader/v2/pkg/loader"
+import "go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 
 type SFTP struct {
 	Address          config.EnvString
