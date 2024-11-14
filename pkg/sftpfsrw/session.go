@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io/fs"
+	"path/filepath"
 )
 
 func NewSession(conn *ssh.Client, sftpFS *sftpFSRW, i uint, logger zLogger.ZLogger) error {
@@ -48,6 +49,9 @@ func (sess *sftpSession) Open(fullpath string) (fs.File, error) {
 
 func (sess *sftpSession) Create(fullpath string) (writefs.FileWrite, error) {
 	sess.logger.Debug().Msgf("create '%s'", fullpath)
+	if err := sess.Client.MkdirAll(filepath.ToSlash(filepath.Dir(fullpath))); err != nil {
+		return nil, errors.Wrapf(err, "cannot create directory '%s'", filepath.ToSlash(filepath.Dir(fullpath)))
+	}
 	fp, err := sess.Client.Create(fullpath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot open '%s'", fullpath)
