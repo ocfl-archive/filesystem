@@ -9,7 +9,7 @@ import (
 )
 
 func NewCreateFSFunc(tlsConfig *tls.Config, addr string, vfs string, closer []io.Closer, logger zLogger.ZLogger) writefs.CreateFSFunc {
-	return func(f *writefs.Factory, baseFolder string) (fs.FS, error) {
-		return NewFS(tlsConfig, addr, baseFolder, vfs, closer, logger)
+	return func(f *writefs.Factory, baseFolder string, readOnly bool) (fs.FS, error) {
+		return NewFS(tlsConfig, addr, baseFolder, vfs, closer, readOnly, logger)
 	}
 }

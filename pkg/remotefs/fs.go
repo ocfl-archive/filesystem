@@ -13,7 +13,9 @@ import (
 	"path/filepath"
 )
 
-func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Closer, logger zLogger.ZLogger) (*remoteFSRW, error) {
+// todo: add jwt bearer token
+
+func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Closer, readOnly bool, logger zLogger.ZLogger) (*remoteFSRW, error) {
 	_logger := logger.With().Str("class", "remoteFSRW").Logger()
 	logger = &_logger
 
@@ -23,21 +25,23 @@ func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Clos
 				TLSClientConfig: tlsConfig,
 			},
 		},
-		addr:   addr,
-		dir:    dir,
-		vfs:    vfs,
-		close:  closer,
-		logger: logger,
+		readOnly: readOnly,
+		addr:     addr,
+		dir:      dir,
+		vfs:      vfs,
+		close:    closer,
+		logger:   logger,
 	}, nil
 }
 
 type remoteFSRW struct {
-	logger zLogger.ZLogger
-	client *http.Client
-	addr   string
-	vfs    string
-	dir    string
-	close  []io.Closer
+	logger   zLogger.ZLogger
+	client   *http.Client
+	addr     string
+	vfs      string
+	dir      string
+	close    []io.Closer
+	readOnly bool
 }
 
 func (d *remoteFSRW) Fullpath(name string) (string, error) {
@@ -69,6 +73,9 @@ func (d *remoteFSRW) Sub(dir string) (fs.FS, error) {
 }
 
 func (d *remoteFSRW) Remove(path string) error {
+	if d.readOnly {
+		return errors.New("read only filesystem")
+	}
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/%s/%s", d.addr, d.vfs, path), nil)
 	if err != nil {
 		return errors.Wrapf(err, "cannot create delete request for '%s/%s/%s'", d.addr, d.vfs, path)
@@ -84,6 +91,9 @@ func (d *remoteFSRW) Remove(path string) error {
 }
 
 func (d *remoteFSRW) Rename(oldPath, newPath string) error {
+	if d.readOnly {
+		return errors.New("read only filesystem")
+	}
 	return errors.Errorf("rename not supported for remoteFSRW")
 }
 
@@ -129,6 +139,9 @@ func (d *remoteFSRW) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (d *remoteFSRW) Create(path string) (writefs.FileWrite, error) {
+	if d.readOnly {
+		return nil, errors.New("read only filesystem")
+	}
 	url := fmt.Sprintf("%s/%s/%s", d.addr, d.vfs, path)
 	pr, pw := io.Pipe()
 	req, err := http.NewRequest(http.MethodPut, url, pr)

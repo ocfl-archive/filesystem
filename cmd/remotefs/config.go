@@ -20,7 +20,6 @@ type RemoteFSConfig struct {
 	ResolverTimeout         config.Duration       `toml:"resolvertimeout"`
 	ResolverNotFoundTimeout config.Duration       `toml:"resolvernotfoundtimeout"`
 	WebTLS                  loader.Config         `toml:"webtls"`
-	ClientTLS               *loader.Config        `toml:"client"`
 	LogFile                 string                `toml:"logfile"`
 	LogLevel                string                `toml:"loglevel"`
 	VFS                     map[string]*vfsrw.VFS `toml:"vfs"`

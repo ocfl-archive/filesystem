@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func NewFS(dir string, logger zLogger.ZLogger) (*osFSRW, error) {
+func NewFS(dir string, readOnly bool, logger zLogger.ZLogger) (*osFSRW, error) {
 	_logger := logger.With().Str("class", "osFSRW").Logger()
 	logger = &_logger
 	var err error
@@ -38,14 +38,16 @@ func NewFS(dir string, logger zLogger.ZLogger) (*osFSRW, error) {
 	}
 
 	return &osFSRW{
-		dir:    dir,
-		logger: logger,
+		dir:      dir,
+		readOnly: readOnly,
+		logger:   logger,
 	}, nil
 }
 
 type osFSRW struct {
-	dir    string
-	logger zLogger.ZLogger
+	dir      string
+	logger   zLogger.ZLogger
+	readOnly bool
 }
 
 func (d *osFSRW) Fullpath(name string) (string, error) {
@@ -57,14 +59,20 @@ func (d *osFSRW) String() string {
 }
 
 func (d *osFSRW) Sub(dir string) (fs.FS, error) {
-	return NewFS(filepath.Join(d.dir, dir), d.logger)
+	return NewFS(filepath.Join(d.dir, dir), d.readOnly, d.logger)
 }
 
 func (d *osFSRW) Remove(path string) error {
+	if d.readOnly {
+		return errors.New("read only filesystem")
+	}
 	return errors.WithStack(os.Remove(filepath.Join(d.dir, path)))
 }
 
 func (d *osFSRW) Rename(oldPath, newPath string) error {
+	if d.readOnly {
+		return errors.New("read only filesystem")
+	}
 	return errors.WithStack(os.Rename(filepath.Join(d.dir, oldPath), filepath.Join(d.dir, newPath)))
 }
 
@@ -85,6 +93,9 @@ func (d *osFSRW) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (d *osFSRW) Create(path string) (writefs.FileWrite, error) {
+	if d.readOnly {
+		return nil, errors.New("read only filesystem")
+	}
 	fullpath := filepath.Join(d.dir, path)
 	dir := filepath.Dir(fullpath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -95,6 +106,9 @@ func (d *osFSRW) Create(path string) (writefs.FileWrite, error) {
 }
 
 func (d *osFSRW) MkDir(path string) error {
+	if d.readOnly {
+		return errors.New("read only filesystem")
+	}
 	return errors.WithStack(os.Mkdir(filepath.Join(d.dir, path), 0777))
 }
 

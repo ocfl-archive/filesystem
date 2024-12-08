@@ -40,12 +40,13 @@ type S3 struct {
 }
 
 type VFS struct {
-	Name   string  `toml:"name"`
-	Type   string  `toml:"type"`
-	S3     *S3     `toml:"s3,omitempty"`
-	OS     *OS     `toml:"os,omitempty"`
-	SFTP   *SFTP   `toml:"sftp,omitempty"`
-	Remote *Remote `toml:"remote,omitempty"`
+	Name     string  `toml:"name"`
+	Type     string  `toml:"type"`
+	ReadOnly bool    `toml:"readonly"`
+	S3       *S3     `toml:"s3,omitempty"`
+	OS       *OS     `toml:"os,omitempty"`
+	SFTP     *SFTP   `toml:"sftp,omitempty"`
+	Remote   *Remote `toml:"remote,omitempty"`
 }
 
 type Config map[string]*VFS

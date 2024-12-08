@@ -19,34 +19,34 @@ import (
 	"regexp"
 )
 
-func newRemote(name string, conf *Remote, logger zLogger.ZLogger) (fs.FS, error) {
+func newRemote(name string, conf *Remote, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
 	clientCert, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
 	if err != nil {
 		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
-	rFS, err := remotefs.NewFS(clientCert, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, logger)
+	rFS, err := remotefs.NewFS(clientCert, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create new osfsrw")
 	}
 	return rFS, nil
 }
 
-func newOS(name string, cfg *OS, logger zLogger.ZLogger) (fs.FS, error) {
-	rFS, err := osfsrw.NewFS(cfg.BaseDir, logger)
+func newOS(name string, cfg *OS, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
+	rFS, err := osfsrw.NewFS(cfg.BaseDir, readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create new osfsrw")
 	}
 	if cfg.ZipAsFolderCache == 0 {
 		return rFS, nil
 	}
-	zFS, err := zipasfolder.NewFS(rFS, int(cfg.ZipAsFolderCache), logger)
+	zFS, err := zipasfolder.NewFS(rFS, int(cfg.ZipAsFolderCache), readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create zipasfolder over '%v'", zFS)
 	}
 	return zFS, nil
 }
 
-func newSFTP(name string, cfg *SFTP, logger zLogger.ZLogger) (fs.FS, error) {
+func newSFTP(name string, cfg *SFTP, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
 	if cfg.Sessions <= cfg.ZipAsFolderCache {
 		return nil, errors.Errorf("sftp sessions (%v) must be larger than zipasfoldercache (%v)", cfg.Sessions, cfg.ZipAsFolderCache)
 	}
@@ -88,21 +88,21 @@ func newSFTP(name string, cfg *SFTP, logger zLogger.ZLogger) (fs.FS, error) {
 		}
 		sConfig.HostKeyCallback = hkCallback
 	}
-	rFS, err := sftpfsrw.NewFS(string(cfg.Address), sConfig, cfg.BaseDir, cfg.Sessions, logger)
+	rFS, err := sftpfsrw.NewFS(string(cfg.Address), sConfig, cfg.BaseDir, cfg.Sessions, readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create sftpfsrw")
 	}
 	if cfg.ZipAsFolderCache == 0 {
 		return rFS, nil
 	}
-	zFS, err := zipasfolder.NewFS(rFS, int(cfg.ZipAsFolderCache), logger)
+	zFS, err := zipasfolder.NewFS(rFS, int(cfg.ZipAsFolderCache), readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create zipasfolder over '%v'", zFS)
 	}
 	return zFS, nil
 }
 
-func newS3(name string, cfg *S3, logger zLogger.ZLogger) (fs.FS, error) {
+func newS3(name string, cfg *S3, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
 	var tlsConfig *tls.Config
 	switch cfg.CAPEM {
 	case "ignore":
@@ -116,14 +116,25 @@ func newS3(name string, cfg *S3, logger zLogger.ZLogger) (fs.FS, error) {
 		}
 	}
 
-	rFS, err := s3fsrw.NewFS(string(cfg.Endpoint), string(cfg.AccessKeyID), string(cfg.SecretAccessKey), string(cfg.Region), cfg.UseSSL, cfg.Debug, tlsConfig, cfg.DNSNetwork, cfg.DNSAddress, logger)
+	rFS, err := s3fsrw.NewFS(
+		string(cfg.Endpoint),
+		string(cfg.AccessKeyID),
+		string(cfg.SecretAccessKey),
+		string(cfg.Region),
+		cfg.UseSSL,
+		cfg.Debug,
+		tlsConfig,
+		cfg.DNSNetwork,
+		cfg.DNSAddress,
+		readOnly,
+		logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create s3fsrw")
 	}
 	if cfg.ZipAsFolderCache == 0 {
 		return rFS, nil
 	}
-	zFS, err := zipasfolder.NewFS(rFS, int(cfg.ZipAsFolderCache), logger)
+	zFS, err := zipasfolder.NewFS(rFS, int(cfg.ZipAsFolderCache), readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create zipasfolder over '%v'", zFS)
 	}

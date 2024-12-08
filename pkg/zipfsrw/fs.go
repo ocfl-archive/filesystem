@@ -13,11 +13,12 @@ import (
 	"io/fs"
 )
 
-func NewFS(writer io.Writer, zipFS zipfs.OpenRawZipFS, noCompression bool, name string, logger zLogger.ZLogger) (*zipFSRW, error) {
+func NewFS(writer io.Writer, zipFS zipfs.OpenRawZipFS, noCompression bool, name string, readOnly bool, logger zLogger.ZLogger) (*zipFSRW, error) {
 	zipWriter := zip.NewWriter(writer)
 	return &zipFSRW{
 		zipReader:     zipFS,
 		zipWriter:     zipWriter,
+		readOnly:      readOnly,
 		newFiles:      []string{},
 		noCompression: noCompression,
 		name:          name,
@@ -32,6 +33,7 @@ type zipFSRW struct {
 	noCompression bool
 	name          string
 	logger        zLogger.ZLogger
+	readOnly      bool
 }
 
 func (zfsrw *zipFSRW) Stat(name string) (fs.FileInfo, error) {
@@ -97,6 +99,9 @@ func (zfsrw *zipFSRW) Open(name string) (fs.File, error) {
 }
 
 func (zfsrw *zipFSRW) Create(path string) (writefs.FileWrite, error) {
+	if zfsrw.readOnly {
+		return nil, errors.New("read-only filesystem")
+	}
 	path = clearPath(path)
 	header := &zip.FileHeader{
 		Name: path,
@@ -126,6 +131,9 @@ func (zfsrw *zipFSRW) Sub(name string) (fs.FS, error) {
 }
 
 func (zfsrw *zipFSRW) MkDir(string) error {
+	if zfsrw.readOnly {
+		return errors.New("read-only filesystem")
+	}
 	return nil
 }
 

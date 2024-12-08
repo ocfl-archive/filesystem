@@ -15,3 +15,5 @@
 # vendor/
 /pkg/s3fsrw/credentials.json
 certs/
+go.work.sum
+go.work

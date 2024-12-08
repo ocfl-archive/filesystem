@@ -9,9 +9,9 @@ import (
 )
 
 func NewCreateFSFunc(logger zLogger.ZLogger) writefs.CreateFSFunc {
-	return func(f *writefs.Factory, baseFolder string) (fs.FS, error) {
+	return func(f *writefs.Factory, baseFolder string, readOnly bool) (fs.FS, error) {
 		folder := strings.TrimPrefix(baseFolder, "file://")
-		osFS, err := NewFS(folder, logger)
+		osFS, err := NewFS(folder, readOnly, logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

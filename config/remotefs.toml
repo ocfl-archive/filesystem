@@ -17,36 +17,17 @@ type = "minivault"
 initialtimeout = "1h"
 [webtls.minivault]
 baseurl = "https://localhost:8759/api/v1"
-parenttoken = "pa.2ddc308244c95b03.bc0be329df5b0297"
+parenttoken = "pa.2221ba907909fc47.ce4f7702cc264bb8"
 tokentype = "server_cert"
 tokenpolicies = ["remotefs"]
-tokeninterval = "1h"
-tokenttl = "2h"
+tokeninterval = "48h"
+tokenttl = "96h"
 certtype = "server_cert"
 dnss = ["localhost"]
 uris = []
 ips = ["127.0.0.1", "::1"]
-certinterval = "8m"
-certttl = "10m"
-ca = ["certs/minivault.ca.pem"]
-usesystempool = false
-
-[client]
-type = "minivault"
-initialtimeout = "1h"
-[client.minivault]
-baseurl = "https://localhost:8759/api/v1"
-parenttoken = "pa.2ddc308244c95b03.bc0be329df5b0297"
-tokentype = "client_cert"
-tokenpolicies = ["remotefs"]
-tokeninterval = "1h"
-tokenttl = "2h"
-certtype = "client_cert"
-dnss = []
-uris = ["grpc:miniresolverproto.MiniResolver"]
-ips = []
-certinterval = "8m"
-certttl = "10m"
+certinterval = "24h"
+certttl = "48h"
 ca = ["certs/minivault.ca.pem"]
 usesystempool = false
 
@@ -56,10 +37,10 @@ type = "os"
 [vfs.drivec.os]
 basedir = "C:/Users/micro/Downloads"
 
-[vfs.test]
+[_vfs.test]
 name = "test"
 type = "sftp"
-[vfs.test.sftp]
+[_vfs.test.sftp]
 address = "ub-x2go4.ub.p.unibas.ch:22"
 user = "jumpuser"
 privatekey = ["C:/daten/keys/syncthing/putty_ed25519.priv.openssh"]

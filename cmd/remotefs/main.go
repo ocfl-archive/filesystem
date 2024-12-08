@@ -7,7 +7,6 @@ import (
 	"github.com/je4/filesystem/v3/config"
 	"github.com/je4/filesystem/v3/pkg/remotefs"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
-	"github.com/je4/miniresolver/v2/pkg/resolver"
 	configutil "github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
@@ -45,9 +44,6 @@ func main() {
 		LogLevel:                "DEBUG",
 		ResolverTimeout:         configutil.Duration(10 * time.Minute),
 		ResolverNotFoundTimeout: configutil.Duration(10 * time.Second),
-		ClientTLS: &loader.Config{
-			Type: "DEV",
-		},
 	}
 	if err := LoadRemoteFSConfig(cfgFS, cfgFile, conf); err != nil {
 		log.Fatalf("cannot load toml from [%v] %s: %v", cfgFS, cfgFile, err)
@@ -91,7 +87,7 @@ func main() {
 	l3 := _logger.With().Timestamp().Str("package", "vfsrw").Logger()
 	vfs, err := vfsrw.NewFS(conf.VFS, &l3)
 	if err != nil {
-		logger.Panic().Err(err).Msg("cannot create vfs")
+		logger.Fatal().Err(err).Msg("cannot create vfs")
 	}
 	defer func() {
 		if err := vfs.Close(); err != nil {
@@ -103,27 +99,6 @@ func main() {
 		logger.Fatal().Err(err).Msg("cannot create server loader")
 	}
 	defer webLoader.Close()
-
-	/*
-		serverCert, serverLoader, err := loader.CreateServerLoader(false, conf.ServerTLS, nil, logger)
-		if err != nil {
-			logger.Panic().Msgf("cannot create server loader: %v", err)
-		}
-		defer serverLoader.Close()
-	*/
-
-	clientCert, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
-	if err != nil {
-		logger.Panic().Msgf("cannot create client loader: %v", err)
-	}
-	defer clientLoader.Close()
-
-	logger.Info().Msgf("resolver address is %s", conf.ResolverAddr)
-	resolverClient, err := resolver.NewMiniresolverClient(conf.ResolverAddr, nil, clientCert, nil, time.Duration(conf.ResolverTimeout), time.Duration(conf.ResolverNotFoundTimeout), logger)
-	if err != nil {
-		logger.Fatal().Msgf("cannot create resolver client: %v", err)
-	}
-	defer resolverClient.Close()
 
 	ctrl, err := remotefs.NewMainController(conf.LocalAddr, conf.ExternalAddr, webTLSConfig, conf.JWTAlg, conf.JWTKey, vfs, logger)
 	if err != nil {

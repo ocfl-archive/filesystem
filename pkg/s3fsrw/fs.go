@@ -17,11 +17,12 @@ import (
 	"net/http"
 )
 
-func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug bool, tlsConfig *tls.Config, dnsNetwork, dnsAddress string, logger zLogger.ZLogger) (*s3FSRW, error) {
+func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug bool, tlsConfig *tls.Config, dnsNetwork, dnsAddress string, readOnly bool, logger zLogger.ZLogger) (*s3FSRW, error) {
 	_logger := logger.With().Str("class", "s3FSRW").Logger()
 	var err error
 	fs := &s3FSRW{
-		client: nil,
+		client:   nil,
+		readOnly: readOnly,
 		//		bucket:   bucket,
 		region:   region,
 		endpoint: endpoint,
@@ -82,10 +83,14 @@ type s3FSRW struct {
 	region   string
 	endpoint string
 	logger   zLogger.ZWrapper
+	readOnly bool
 }
 
 // MkDir does nothing
 func (s3FS *s3FSRW) MkDir(path string) error {
+	if s3FS.readOnly {
+		return errors.New("read-only filesystem")
+	}
 	bucket, bucketPath := extractBucket(path)
 	if bucketPath != "" {
 		return errors.Wrapf(fs.ErrInvalid, "cannot create bucket with subfolders '%s'", path)
@@ -164,6 +169,9 @@ func (s3FS *s3FSRW) ReadDir(path string) ([]fs.DirEntry, error) {
 }
 
 func (s3FS *s3FSRW) Create(path string) (writefs.FileWrite, error) {
+	if s3FS.readOnly {
+		return nil, errors.New("read-only filesystem")
+	}
 	bucket, bucketPath := extractBucket(path)
 	if s3FS.logger != nil {
 		s3FS.logger.Debugf("%s - Create(%s)", s3FS.String(), path)
@@ -182,6 +190,9 @@ func (s3FS *s3FSRW) Create(path string) (writefs.FileWrite, error) {
 }
 
 func (s3FS *s3FSRW) Remove(path string) error {
+	if s3FS.readOnly {
+		return errors.New("read-only filesystem")
+	}
 	bucket, bucketPath := extractBucket(path)
 	if s3FS.logger != nil {
 		s3FS.logger.Debugf("%s - Delete(%s)", s3FS.String(), path)
@@ -205,6 +216,9 @@ func (s3FS *s3FSRW) String() string {
 }
 
 func (s3FS *s3FSRW) Rename(src, dest string) error {
+	if s3FS.readOnly {
+		return errors.New("read-only filesystem")
+	}
 	if s3FS.logger != nil {
 		s3FS.logger.Debugf("%s - Rename(%s, %s)", s3FS.String(), src, dest)
 	}

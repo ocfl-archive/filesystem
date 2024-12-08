@@ -16,11 +16,12 @@ import (
 
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only
 // it implements readwritefs.ReadWriteFS, fs.ReadDirFS, fs.ReadFileFS, basefs.CloserFS
-func NewFS(baseFS fs.FS, cacheSize int, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
+func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
 	_logger := logger.With().Str("class", "zipAsFolderFS").Logger()
 	logger = &_logger
 	f := &zipAsFolderFS{
-		baseFS: baseFS,
+		baseFS:   baseFS,
+		readOnly: readOnly,
 		zipCache: gcache.New(cacheSize).
 			LRU().
 			LoaderFunc(func(key interface{}) (interface{}, error) {
@@ -77,6 +78,7 @@ type zipAsFolderFS struct {
 	lock     sync.RWMutex
 	end      chan bool
 	logger   zLogger.ZLogger
+	readOnly bool
 }
 
 func (fsys *zipAsFolderFS) Fullpath(name string) (string, error) {
@@ -89,6 +91,9 @@ func (fsys *zipAsFolderFS) String() string {
 
 // CReate creates a new file
 func (fsys *zipAsFolderFS) Create(path string) (writefs.FileWrite, error) {
+	if fsys.readOnly {
+		return nil, errors.New("read-only filesystem")
+	}
 	path = clearPath(path)
 	zipFile, _, isZIP := expandZipFile(path)
 	if isZIP {
@@ -99,6 +104,9 @@ func (fsys *zipAsFolderFS) Create(path string) (writefs.FileWrite, error) {
 
 // MkDir creates a new folder
 func (fsys *zipAsFolderFS) MkDir(path string) error {
+	if fsys.readOnly {
+		return errors.New("read-only filesystem")
+	}
 	path = clearPath(path)
 	zipFile, _, isZIP := expandZipFile(path)
 	if isZIP {

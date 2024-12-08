@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func NewFS(addr string, config *ssh.ClientConfig, baseDir string, numSessions uint, logger zLogger.ZLogger) (*sftpFSRW, error) {
+func NewFS(addr string, config *ssh.ClientConfig, baseDir string, numSessions uint, readOnly bool, logger zLogger.ZLogger) (*sftpFSRW, error) {
 	_logger := logger.With().Str("class", "sftpFSRW").Logger()
 	logger = &_logger
 	client, err := ssh.Dial("tcp", addr, config)
@@ -21,6 +21,7 @@ func NewFS(addr string, config *ssh.ClientConfig, baseDir string, numSessions ui
 	}
 
 	sftpFS := &sftpFSRW{
+		readOnly:     readOnly,
 		addr:         addr,
 		user:         config.User,
 		baseDir:      baseDir,
@@ -47,9 +48,13 @@ type sftpFSRW struct {
 	baseDir      string
 	freeSessions chan uint
 	logger       zLogger.ZLogger
+	readOnly     bool
 }
 
 func (sftpFS *sftpFSRW) Remove(path string) error {
+	if sftpFS.readOnly {
+		return errors.Errorf("read only filesystem")
+	}
 	sess, err := sftpFS.getSession(time.Second * 10)
 	if err != nil {
 		return errors.Wrapf(err, "cannot get sftp session")
@@ -60,6 +65,9 @@ func (sftpFS *sftpFSRW) Remove(path string) error {
 }
 
 func (sftpFS *sftpFSRW) Rename(oldPath, newPath string) error {
+	if sftpFS.readOnly {
+		return errors.Errorf("read only filesystem")
+	}
 	sess, err := sftpFS.getSession(time.Second * 10)
 	if err != nil {
 		return errors.Wrapf(err, "cannot get sftp session")
@@ -71,6 +79,9 @@ func (sftpFS *sftpFSRW) Rename(oldPath, newPath string) error {
 }
 
 func (sftpFS *sftpFSRW) MkDir(path string) error {
+	if sftpFS.readOnly {
+		return errors.Errorf("read only filesystem")
+	}
 	sess, err := sftpFS.getSession(time.Second * 10)
 	if err != nil {
 		return errors.Wrapf(err, "cannot get sftp session")
@@ -81,6 +92,9 @@ func (sftpFS *sftpFSRW) MkDir(path string) error {
 }
 
 func (sftpFS *sftpFSRW) Create(path string) (writefs.FileWrite, error) {
+	if sftpFS.readOnly {
+		return nil, errors.Errorf("read only filesystem")
+	}
 	sess, err := sftpFS.getSession(time.Second * 10)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get sftp session")

@@ -21,7 +21,7 @@ var ARNRegexStr = `^arn:(?P<partition>[^:]*):s3:(?P<region>[^:]*):(?P<namespace>
 func NewCreateFSFunc(access map[string]*S3Access, regexpString string, debug bool, tlsConfig *tls.Config, dnsNetwork, dnsAddress string, logger zLogger.ZLogger) writefs.CreateFSFunc {
 	urnRegexp := regexp.MustCompile(regexpString)
 
-	return func(f *writefs.Factory, path string) (fs.FS, error) {
+	return func(f *writefs.Factory, path string, readOnly bool) (fs.FS, error) {
 		urnMatch := urnRegexp.FindStringSubmatch(path)
 		result := make(map[string]string)
 		for i, name := range urnRegexp.SubexpNames() {
@@ -51,6 +51,7 @@ func NewCreateFSFunc(access map[string]*S3Access, regexpString string, debug boo
 			tlsConfig,
 			dnsNetwork,
 			dnsAddress,
+			readOnly,
 			logger,
 		)
 		if err != nil {

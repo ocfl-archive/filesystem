@@ -15,7 +15,7 @@ const (
 	HighFS
 )
 
-type CreateFSFunc func(f *Factory, path string) (fs.FS, error)
+type CreateFSFunc func(f *Factory, path string, readOnly bool) (fs.FS, error)
 
 type createFS struct {
 	level  levelFS
@@ -58,10 +58,10 @@ func (f *Factory) Register(create CreateFSFunc, identifyRegex string, level leve
 	return nil
 }
 
-func (f *Factory) Get(path string) (fs.FS, error) {
+func (f *Factory) Get(path string, readOnly bool) (fs.FS, error) {
 	for _, cs := range f.fss {
 		if cs.re.MatchString(path) {
-			fsys, err := cs.create(f, path)
+			fsys, err := cs.create(f, path, readOnly)
 			if err != nil {
 				return nil, errors.Wrapf(err, "cannot create filesystem for '%s'", path)
 			}
