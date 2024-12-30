@@ -138,7 +138,7 @@ func (d *osFSRW) Close() error {
 	return nil
 }
 
-func (d *osFSRW) WriteFile(name string, data []byte) (int, error) {
+func (d *osFSRW) WriteFile(name string, data []byte) (int64, error) {
 	if d.readOnly {
 		return 0, errors.New("read only filesystem")
 	}

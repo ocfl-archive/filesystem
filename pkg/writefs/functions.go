@@ -40,6 +40,13 @@ func Create(fsys fs.FS, path string) (FileWrite, error) {
 	return nil, errors.Wrap(ErrNotImplemented, "Create")
 }
 
+func Append(fsys fs.FS, path string) (FileWrite, error) {
+	if _fsys, ok := fsys.(AppendFS); ok {
+		return _fsys.Append(path)
+	}
+	return nil, errors.Wrap(ErrNotImplemented, "Append")
+}
+
 func Remove(fsys fs.FS, path string) error {
 	if _fsys, ok := fsys.(RemoveFS); ok {
 		return _fsys.Remove(path)
@@ -61,7 +68,7 @@ func Fullpath(fsys fs.FS, name string) (string, error) {
 	return "", errors.Wrap(ErrNotImplemented, "Fullpath")
 }
 
-func WriteFile(fsys fs.FS, name string, data []byte) (int, error) {
+func WriteFile(fsys fs.FS, name string, data []byte) (int64, error) {
 	if _fsys, ok := fsys.(WriteFileFS); ok {
 		return _fsys.WriteFile(name, data)
 	}
@@ -77,7 +84,7 @@ func WriteFile(fsys fs.FS, name string, data []byte) (int, error) {
 	if err := fp.Close(); err != nil {
 		return 0, errors.Wrapf(err, "cannot close file '%s'", name)
 	}
-	return count, nil
+	return int64(count), nil
 }
 
 func HasContent(fsys fs.FS) bool {
@@ -93,11 +100,14 @@ func HasContent(fsys fs.FS) bool {
 	return false
 }
 
-func Copy(fs fs.FS, src, dst string) (int64, error) {
+func Copy(fsys fs.FS, src, dst string) (int64, error) {
+	if _fsys, ok := fsys.(CopyFS); ok {
+		return _fsys.Copy(dst, src)
+	}
 	var srcFP io.ReadCloser
 	var err error
 	if strings.Contains(src, "://") {
-		srcFP, err = fs.Open(src)
+		srcFP, err = fsys.Open(src)
 		if err != nil {
 			return 0, errors.Wrapf(err, "cannot open source '%s'", src)
 		}
@@ -109,7 +119,7 @@ func Copy(fs fs.FS, src, dst string) (int64, error) {
 	}
 	var dstFP io.WriteCloser
 	if strings.Contains(dst, "://") {
-		dstFP, err = Create(fs, dst)
+		dstFP, err = Create(fsys, dst)
 		if err != nil {
 			srcFP.Close()
 			return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)

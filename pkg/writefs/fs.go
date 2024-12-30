@@ -25,7 +25,11 @@ type CloseFS interface {
 }
 
 type WriteFileFS interface {
-	WriteFile(name string, data []byte) (int, error)
+	WriteFile(name string, data []byte) (int64, error)
+}
+
+type CopyFS interface {
+	Copy(dst, src string) (int64, error)
 }
 
 type FullpathFS interface {
@@ -33,6 +37,7 @@ type FullpathFS interface {
 }
 
 type FullFS interface {
+	//CopyFS
 	CreateFS
 	AppendFS
 	MkDirFS

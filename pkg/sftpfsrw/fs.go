@@ -52,7 +52,7 @@ type sftpFSRW struct {
 	readOnly     bool
 }
 
-func (sftpFS *sftpFSRW) WriteFile(name string, data []byte) (int, error) {
+func (sftpFS *sftpFSRW) WriteFile(name string, data []byte) (int64, error) {
 	if sftpFS.readOnly {
 		return 0, errors.Errorf("read only filesystem")
 	}

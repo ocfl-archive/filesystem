@@ -90,7 +90,7 @@ func (s3FS *s3FSRW) Close() error {
 	return nil
 }
 
-func (s3FS *s3FSRW) WriteFile(path string, data []byte) (int, error) {
+func (s3FS *s3FSRW) WriteFile(name string, data []byte) (int64, error) {
 	if s3FS.readOnly {
 		return 0, errors.New("read-only filesystem")
 	}
@@ -162,6 +162,21 @@ func (s3FS *s3FSRW) ReadFile(path string) ([]byte, error) {
 		return nil, errors.Wrapf(err, "cannot read '%s'", path)
 	}
 	return data.Bytes(), nil
+}
+
+func (s3FS *s3FSRW) Copy(dst, src string) (int64, error) {
+	if s3FS.logger != nil {
+		s3FS.logger.Debugf("%s - Copy(%s, %s)", s3FS.String(), dst, src)
+	}
+	dstBucket, dstBucketPath := extractBucket(dst)
+	srcBucket, srcBucketPath := extractBucket(src)
+	ui, err := s3FS.client.CopyObject(context.Background(),
+		minio.CopyDestOptions{Bucket: dstBucket, Object: dstBucketPath},
+		minio.CopySrcOptions{Bucket: srcBucket, Object: srcBucketPath})
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot copy '%s' --> '%s'", src, dst)
+	}
+	return int(ui.Size), nil
 }
 
 func (s3FS *s3FSRW) ReadDir(path string) ([]fs.DirEntry, error) {
