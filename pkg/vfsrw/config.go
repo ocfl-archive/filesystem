@@ -23,6 +23,7 @@ type Remote struct {
 	Address   string
 	ClientTLS *loader.Config
 	BaseDir   string
+	JWTKey    config.EnvString
 }
 
 type S3 struct {

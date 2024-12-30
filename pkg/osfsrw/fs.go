@@ -105,6 +105,15 @@ func (d *osFSRW) Create(path string) (writefs.FileWrite, error) {
 	return w, errors.Wrapf(err, "cannot create file '%s'", fullpath)
 }
 
+func (d *osFSRW) Append(path string) (writefs.FileWrite, error) {
+	if d.readOnly {
+		return nil, errors.New("read only filesystem")
+	}
+	fullpath := filepath.Join(d.dir, path)
+	w, err := os.OpenFile(fullpath, os.O_APPEND|os.O_WRONLY, 0644)
+	return w, errors.Wrapf(err, "cannot create file '%s'", fullpath)
+}
+
 func (d *osFSRW) MkDir(path string) error {
 	if d.readOnly {
 		return errors.New("read only filesystem")
@@ -125,15 +134,24 @@ func (d *osFSRW) ReadFile(name string) ([]byte, error) {
 	return data, errors.WithStack(err)
 }
 
+func (d *osFSRW) Close() error {
+	return nil
+}
+
+func (d *osFSRW) WriteFile(name string, data []byte) (int, error) {
+	if d.readOnly {
+		return 0, errors.New("read only filesystem")
+	}
+	if err := os.WriteFile(filepath.Join(d.dir, name), data, 0644); err != nil {
+		return 0, errors.Wrapf(err, "cannot write file '%s'", name)
+	}
+	return len(data), nil
+}
+
 var (
-	_ writefs.CreateFS    = &osFSRW{}
-	_ writefs.ReadWriteFS = &osFSRW{}
-	_ writefs.MkDirFS     = &osFSRW{}
-	_ writefs.RenameFS    = &osFSRW{}
-	_ writefs.RemoveFS    = &osFSRW{}
-	_ writefs.FullpathFS  = &osFSRW{}
-	_ fs.ReadDirFS        = &osFSRW{}
-	_ fs.ReadFileFS       = &osFSRW{}
-	_ fs.StatFS           = &osFSRW{}
-	_ fs.SubFS            = &osFSRW{}
+	_ writefs.FullFS = &osFSRW{}
+	_ fs.ReadDirFS   = &osFSRW{}
+	_ fs.ReadFileFS  = &osFSRW{}
+	_ fs.StatFS      = &osFSRW{}
+	_ fs.SubFS       = &osFSRW{}
 )

@@ -24,7 +24,7 @@ func newRemote(name string, conf *Remote, readOnly bool, logger zLogger.ZLogger)
 	if err != nil {
 		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
-	rFS, err := remotefs.NewFS(clientCert, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, readOnly, logger)
+	rFS, err := remotefs.NewFS(clientCert, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, conf.JWTKey.String(), readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create new osfsrw")
 	}

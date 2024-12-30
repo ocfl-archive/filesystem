@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -49,6 +50,26 @@ type sftpFSRW struct {
 	freeSessions chan uint
 	logger       zLogger.ZLogger
 	readOnly     bool
+}
+
+func (sftpFS *sftpFSRW) WriteFile(name string, data []byte) (int, error) {
+	if sftpFS.readOnly {
+		return 0, errors.Errorf("read only filesystem")
+	}
+	fp, err := sftpFS.Create(name)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create '%s'", name)
+	}
+	defer fp.Close()
+	n, err := fp.Write(data)
+	if err != nil {
+		return n, errors.Wrapf(err, "cannot write to '%s'", name)
+	}
+	return n, nil
+}
+
+func (sftpFS *sftpFSRW) Fullpath(name string) (string, error) {
+	return filepath.ToSlash(filepath.Join(sftpFS.baseDir, name)), nil
 }
 
 func (sftpFS *sftpFSRW) Remove(path string) error {
@@ -101,8 +122,25 @@ func (sftpFS *sftpFSRW) Create(path string) (writefs.FileWrite, error) {
 	}
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
 	fp, err := sess.Create(fullpath)
+
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create '%s'")
+	}
+	return fp, nil
+}
+
+func (sftpFS *sftpFSRW) Append(path string) (writefs.FileWrite, error) {
+	if sftpFS.readOnly {
+		return nil, errors.Errorf("read only filesystem")
+	}
+	sess, err := sftpFS.getSession(time.Second * 10)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get sftp session")
+	}
+	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
+	fp, err := sess.OpenFile(fullpath, os.O_APPEND|os.O_WRONLY)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot open '%s'")
 	}
 	return fp, nil
 }
@@ -212,9 +250,6 @@ var (
 	_ fs.StatFS     = (*sftpFSRW)(nil)
 	_ fs.SubFS      = (*sftpFSRW)(nil)
 	//	_ writefs.IsLockedFS = (*sftpFSRW)(nil)
-	_ fmt.Stringer        = (*sftpFSRW)(nil)
-	_ writefs.ReadWriteFS = (*sftpFSRW)(nil)
-	_ writefs.MkDirFS     = (*sftpFSRW)(nil)
-	_ writefs.RenameFS    = (*sftpFSRW)(nil)
-	_ writefs.RemoveFS    = (*sftpFSRW)(nil)
+	_ fmt.Stringer   = (*sftpFSRW)(nil)
+	_ writefs.FullFS = (*sftpFSRW)(nil)
 )

@@ -5,17 +5,19 @@ import (
 	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"io"
 	"io/fs"
 	"net/http"
 	"path/filepath"
+	"time"
 )
 
 // todo: add jwt bearer token
 
-func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Closer, readOnly bool, logger zLogger.ZLogger) (*remoteFSRW, error) {
+func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Closer, jwtKey string, readOnly bool, logger zLogger.ZLogger) (*remoteFSRW, error) {
 	_logger := logger.With().Str("class", "remoteFSRW").Logger()
 	logger = &_logger
 
@@ -26,6 +28,7 @@ func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Clos
 			},
 		},
 		readOnly: readOnly,
+		jwtKey:   jwtKey,
 		addr:     addr,
 		dir:      dir,
 		vfs:      vfs,
@@ -42,6 +45,7 @@ type remoteFSRW struct {
 	dir      string
 	close    []io.Closer
 	readOnly bool
+	jwtKey   string
 }
 
 func (d *remoteFSRW) Fullpath(name string) (string, error) {
@@ -79,6 +83,23 @@ func (d *remoteFSRW) Remove(path string) error {
 	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/%s/%s", d.addr, d.vfs, path), nil)
 	if err != nil {
 		return errors.Wrapf(err, "cannot create delete request for '%s/%s/%s'", d.addr, d.vfs, path)
+	}
+	if d.jwtKey != "" {
+		token := jwt.New(jwt.SigningMethodHS256)
+		token.Claims = jwt.RegisteredClaims{
+			Subject: fmt.Sprintf("vfs.%s", d.vfs),
+			IssuedAt: &jwt.NumericDate{
+				Time: time.Now(),
+			},
+			ExpiresAt: &jwt.NumericDate{
+				Time: time.Now().Add(time.Minute),
+			},
+		}
+		tokenString, err := token.SignedString([]byte(d.jwtKey))
+		if err != nil {
+			return errors.Wrapf(err, "cannot sign token")
+		}
+		req.Header.Set("Authorization", "Bearer "+tokenString)
 	}
 	resp, err := d.client.Do(req)
 	if err != nil {

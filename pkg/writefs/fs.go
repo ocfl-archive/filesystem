@@ -4,6 +4,10 @@ type CreateFS interface {
 	Create(path string) (FileWrite, error)
 }
 
+type AppendFS interface {
+	Append(path string) (FileWrite, error)
+}
+
 type MkDirFS interface {
 	MkDir(path string) error
 }
@@ -26,4 +30,15 @@ type WriteFileFS interface {
 
 type FullpathFS interface {
 	Fullpath(name string) (string, error)
+}
+
+type FullFS interface {
+	CreateFS
+	AppendFS
+	MkDirFS
+	RenameFS
+	RemoveFS
+	CloseFS
+	WriteFileFS
+	FullpathFS
 }

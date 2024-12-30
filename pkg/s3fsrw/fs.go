@@ -86,6 +86,31 @@ type s3FSRW struct {
 	readOnly bool
 }
 
+func (s3FS *s3FSRW) Close() error {
+	return nil
+}
+
+func (s3FS *s3FSRW) WriteFile(path string, data []byte) (int, error) {
+	if s3FS.readOnly {
+		return 0, errors.New("read-only filesystem")
+	}
+	bucket, bucketPath := extractBucket(path)
+	if s3FS.logger != nil {
+		s3FS.logger.Debugf("%s - Create(%s)", s3FS.String(), path)
+	}
+	ctx := context.Background()
+	byteBuffer := bytes.NewBuffer(data)
+	ui, err := s3FS.client.PutObject(ctx, bucket, bucketPath, byteBuffer, -1, minio.PutObjectOptions{})
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot write '%s'", path)
+	}
+	return int(ui.Size), nil
+}
+
+func (s3FS *s3FSRW) Fullpath(name string) (string, error) {
+	return name, nil
+}
+
 // MkDir does nothing
 func (s3FS *s3FSRW) MkDir(path string) error {
 	if s3FS.readOnly {
@@ -185,6 +210,59 @@ func (s3FS *s3FSRW) Create(path string) (writefs.FileWrite, error) {
 		if err != nil {
 			wc.Close()
 		}
+	}()
+	return wc, nil
+}
+
+func (s3FS *s3FSRW) Append(path string) (writefs.FileWrite, error) {
+	if s3FS.readOnly {
+		return nil, errors.New("read-only filesystem")
+	}
+	bucket, bucketPath := extractBucket(path)
+	if s3FS.logger != nil {
+		s3FS.logger.Debugf("%s - Create(%s)", s3FS.String(), path)
+	}
+	ctx := context.Background()
+	wc := NewWriteCloser(path, s3FS.logger)
+	go func() {
+		// new data is in .append
+		ui, err := s3FS.client.PutObject(ctx, bucket, bucketPath+".append", wc.GetReader(), -1, minio.PutObjectOptions{})
+		var errs []error
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			// .appendall is the concatenation of the original file and the new data
+			if ui, err = s3FS.client.ComposeObject(ctx,
+				minio.CopyDestOptions{Bucket: bucket, Object: bucketPath + ".appendall"},
+				minio.CopySrcOptions{Bucket: bucket, Object: bucketPath},
+				minio.CopySrcOptions{Bucket: bucket, Object: bucketPath + ".append"}); err != nil {
+				errs = append(errs, err)
+			} else {
+				// copy .appendall to original file
+				if ui, err = s3FS.client.CopyObject(ctx, minio.CopyDestOptions{
+					Bucket: bucket,
+					Object: bucketPath,
+				}, minio.CopySrcOptions{
+					Bucket: bucket,
+					Object: bucketPath + ".appendall",
+				}); err != nil {
+					errs = append(errs, err)
+				} else {
+					// remove temporary files
+					if err = s3FS.client.RemoveObject(ctx, bucket, bucketPath+".append", minio.RemoveObjectOptions{}); err != nil {
+						errs = append(errs, err)
+					}
+					if err = s3FS.client.RemoveObject(ctx, bucket, bucketPath+".appendall", minio.RemoveObjectOptions{}); err != nil {
+						errs = append(errs, err)
+					}
+				}
+			}
+		}
+		if len(errs) > 0 {
+			wc.Close()
+		}
+		uierr := NewUploadInfo(&ui, errors.Combine(errs...))
+		wc.c <- uierr
 	}()
 	return wc, nil
 }
@@ -336,13 +414,10 @@ func (s3FS *s3FSRW) HasContent() bool {
 }
 
 var (
-	_ writefs.ReadWriteFS = &s3FSRW{}
-	_ writefs.MkDirFS     = &s3FSRW{}
-	_ writefs.RenameFS    = &s3FSRW{}
-	_ writefs.RemoveFS    = &s3FSRW{}
-	_ fs.ReadDirFS        = &s3FSRW{}
-	_ fs.ReadFileFS       = &s3FSRW{}
-	_ fs.StatFS           = &s3FSRW{}
-	_ fs.SubFS            = &s3FSRW{}
-	_ fmt.Stringer        = &s3FSRW{}
+	_ fs.ReadDirFS   = &s3FSRW{}
+	_ fs.ReadFileFS  = &s3FSRW{}
+	_ fs.StatFS      = &s3FSRW{}
+	_ fs.SubFS       = &s3FSRW{}
+	_ fmt.Stringer   = &s3FSRW{}
+	_ writefs.FullFS = &s3FSRW{}
 )
