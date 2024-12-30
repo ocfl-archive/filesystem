@@ -63,9 +63,9 @@ func (sftpFS *sftpFSRW) WriteFile(name string, data []byte) (int64, error) {
 	defer fp.Close()
 	n, err := fp.Write(data)
 	if err != nil {
-		return n, errors.Wrapf(err, "cannot write to '%s'", name)
+		return int64(n), errors.Wrapf(err, "cannot write to '%s'", name)
 	}
-	return n, nil
+	return int64(n), nil
 }
 
 func (sftpFS *sftpFSRW) Fullpath(name string) (string, error) {

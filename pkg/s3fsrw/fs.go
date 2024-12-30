@@ -90,7 +90,7 @@ func (s3FS *s3FSRW) Close() error {
 	return nil
 }
 
-func (s3FS *s3FSRW) WriteFile(name string, data []byte) (int64, error) {
+func (s3FS *s3FSRW) WriteFile(path string, data []byte) (int64, error) {
 	if s3FS.readOnly {
 		return 0, errors.New("read-only filesystem")
 	}
@@ -104,7 +104,7 @@ func (s3FS *s3FSRW) WriteFile(name string, data []byte) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrapf(err, "cannot write '%s'", path)
 	}
-	return int(ui.Size), nil
+	return ui.Size, nil
 }
 
 func (s3FS *s3FSRW) Fullpath(name string) (string, error) {
@@ -176,7 +176,7 @@ func (s3FS *s3FSRW) Copy(dst, src string) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrapf(err, "cannot copy '%s' --> '%s'", src, dst)
 	}
-	return int(ui.Size), nil
+	return ui.Size, nil
 }
 
 func (s3FS *s3FSRW) ReadDir(path string) ([]fs.DirEntry, error) {

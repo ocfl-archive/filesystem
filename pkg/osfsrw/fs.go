@@ -145,7 +145,7 @@ func (d *osFSRW) WriteFile(name string, data []byte) (int64, error) {
 	if err := os.WriteFile(filepath.Join(d.dir, name), data, 0644); err != nil {
 		return 0, errors.Wrapf(err, "cannot write file '%s'", name)
 	}
-	return len(data), nil
+	return int64(len(data)), nil
 }
 
 var (
