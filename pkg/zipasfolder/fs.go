@@ -141,11 +141,6 @@ func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 	return fs.Stat(zipFS, zipPath)
 }
 
-// Sub returns a new zipAsFolderFS which is a subfolder of the current zipAsFolderFS
-func (fsys *zipAsFolderFS) Sub(dir string) (writefs.ReadWriteFS, error) {
-	return writefs.NewSubFS(fsys, dir), nil
-}
-
 // ReadFile reads a file from the filesystem
 func (fsys *zipAsFolderFS) ReadFile(name string) ([]byte, error) {
 	fp, err := fsys.Open(name)

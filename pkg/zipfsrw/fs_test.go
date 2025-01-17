@@ -28,11 +28,12 @@ func tempFileName(prefix, suffix string) string {
 var baseFS fs.FS       // base file system
 var zipFileName string // path of the zip file
 
+var _logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
+var logger = &_logger
+
 func TestMain(m *testing.M) {
 	var err error
-	_logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
-	logger := &_logger
-	baseFS, err = osfsrw.NewFS(os.TempDir(), logger)
+	baseFS, err = osfsrw.NewFS(os.TempDir(), false, logger)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -92,7 +93,7 @@ func testZipFSRW_Create(t *testing.T) {
 	// create a new zip file
 
 	// create a new zip file system
-	zipFS, err := NewFSFileChecksums(baseFS, zipFileName, false, []checksum.DigestAlgorithm{checksum.DigestSHA512})
+	zipFS, err := NewFSFileChecksums(baseFS, zipFileName, false, []checksum.DigestAlgorithm{checksum.DigestSHA512}, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func testZipFSRW_Create(t *testing.T) {
 	for _, letter := range []rune("abcdefghijklmnopqrstuvw") {
 		fname := filepath.ToSlash(filepath.Join(string(letter), "content.txt"))
 		fmt.Println("   create file", fname)
-		fp, err := zipFS.Create(fname)
+		fp, err := writefs.Create(zipFS, fname)
 		if err != nil {
 			t.Fatalf("cannot create file '%s': %v", fname, err)
 		}
@@ -121,8 +122,6 @@ func testZipFSRW_Create(t *testing.T) {
 
 func testZipFSRW_Read(t *testing.T) {
 	// open the zip file system again
-	_logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
-	logger := &_logger
 	zipFS, err := zipfs.NewFSFile(baseFS, zipFileName, logger)
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +159,7 @@ func testZipFSRW_Update(t *testing.T) {
 	// create a new zip file
 
 	// create a new zip file system
-	zipFS, err := NewFSFileChecksums(baseFS, zipFileName, false, []checksum.DigestAlgorithm{checksum.DigestSHA512})
+	zipFS, err := NewFSFileChecksums(baseFS, zipFileName, false, []checksum.DigestAlgorithm{checksum.DigestSHA512}, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +167,7 @@ func testZipFSRW_Update(t *testing.T) {
 	for _, letter := range []rune("vwxyz") {
 		fname := filepath.ToSlash(filepath.Join(string(letter), "content.txt"))
 		fmt.Println("   create file", fname)
-		fp, err := zipFS.Create(fname)
+		fp, err := writefs.Create(zipFS, fname)
 		if err != nil {
 			t.Fatalf("cannot create file '%s': %v", fname, err)
 		}
@@ -191,7 +190,7 @@ func testZipFSRW_Update(t *testing.T) {
 
 func testZipFSRW_ReadUpdate(t *testing.T) {
 	// open the zip file system again
-	zipFS, err := NewFSFile(baseFS, zipFileName, false)
+	zipFS, err := NewFSFile(baseFS, zipFileName, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

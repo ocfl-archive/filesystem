@@ -52,6 +52,44 @@ type sftpFSRW struct {
 	readOnly     bool
 }
 
+func (sftpFS *sftpFSRW) Copy(dst, src string) (int64, error) {
+	if sftpFS.readOnly {
+		return 0, errors.New("read only filesystem")
+	}
+	sess, err := sftpFS.getSession(time.Second * 10)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot get sftp session")
+	}
+	defer sftpFS.closeSession(sess)
+	src = filepath.ToSlash(filepath.Join(sftpFS.baseDir, src))
+	dst = filepath.ToSlash(filepath.Join(sftpFS.baseDir, dst))
+	fpSrc, err := sess.Open(src)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot open file '%s'", src)
+	}
+	defer fpSrc.Close()
+	fpDest, err := sess.Create(dst)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create file '%s'", dst)
+	}
+	num, err := io.Copy(fpDest, fpSrc)
+	if err != nil {
+		fpDest.Close()
+		return 0, errors.Wrapf(err, "cannot copy file '%s' to '%s'", src, dst)
+	}
+	if err := fpDest.Close(); err != nil {
+		return 0, errors.Wrapf(err, "cannot close file '%s'", dst)
+	}
+	return num, nil
+}
+
+func (sftpFS *sftpFSRW) Equal(fsys fs.FS) bool {
+	if sftpFS2, ok := fsys.(*sftpFSRW); ok {
+		return sftpFS.addr == sftpFS2.addr && sftpFS.baseDir == sftpFS2.baseDir && sftpFS.user == sftpFS2.user
+	}
+	return false
+}
+
 func (sftpFS *sftpFSRW) WriteFile(name string, data []byte) (int64, error) {
 	if sftpFS.readOnly {
 		return 0, errors.Errorf("read only filesystem")
@@ -124,7 +162,7 @@ func (sftpFS *sftpFSRW) Create(path string) (writefs.FileWrite, error) {
 	fp, err := sess.Create(fullpath)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot create '%s'")
+		return nil, errors.Wrapf(err, "cannot create '%s'", fullpath)
 	}
 	return fp, nil
 }
@@ -140,7 +178,7 @@ func (sftpFS *sftpFSRW) Append(path string) (writefs.FileWrite, error) {
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
 	fp, err := sess.OpenFile(fullpath, os.O_APPEND|os.O_WRONLY)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot open '%s'")
+		return nil, errors.Wrapf(err, "cannot open '%s'", fullpath)
 	}
 	return fp, nil
 }
@@ -209,10 +247,6 @@ func (sftpFS *sftpFSRW) closeSession(sess *sftpSession) {
 	sftpFS.freeSessions <- sess.id
 }
 
-func (sftpFS *sftpFSRW) Sub(dir string) (fs.FS, error) {
-	return writefs.NewSubFS(sftpFS, dir), nil
-}
-
 func (sftpFS *sftpFSRW) String() string {
 	return fmt.Sprintf("sftp://%s@%s/%s", sftpFS.user, sftpFS.addr, sftpFS.baseDir)
 }
@@ -244,12 +278,6 @@ func (sftpFS *sftpFSRW) Close() error {
 }
 
 var (
-	_ fs.FS         = (*sftpFSRW)(nil)
-	_ fs.ReadDirFS  = (*sftpFSRW)(nil)
-	_ fs.ReadFileFS = (*sftpFSRW)(nil)
-	_ fs.StatFS     = (*sftpFSRW)(nil)
-	_ fs.SubFS      = (*sftpFSRW)(nil)
-	//	_ writefs.IsLockedFS = (*sftpFSRW)(nil)
 	_ fmt.Stringer   = (*sftpFSRW)(nil)
 	_ writefs.FullFS = (*sftpFSRW)(nil)
 )

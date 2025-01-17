@@ -1,5 +1,7 @@
 package writefs
 
+import "io/fs"
+
 type CreateFS interface {
 	Create(path string) (FileWrite, error)
 }
@@ -36,8 +38,12 @@ type FullpathFS interface {
 	Fullpath(name string) (string, error)
 }
 
+type EqualFS interface {
+	Equal(fsys fs.FS) bool
+}
+
 type FullFS interface {
-	//CopyFS
+	CopyFS
 	CreateFS
 	AppendFS
 	MkDirFS
@@ -46,4 +52,9 @@ type FullFS interface {
 	CloseFS
 	WriteFileFS
 	FullpathFS
+	EqualFS
+	fs.FS
+	fs.ReadDirFS
+	fs.ReadFileFS
+	fs.StatFS
 }

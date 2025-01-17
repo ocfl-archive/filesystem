@@ -36,6 +36,95 @@ type zipFSRW struct {
 	readOnly      bool
 }
 
+func (zfsrw *zipFSRW) Copy(dst, src string) (int64, error) {
+	if zfsrw.readOnly {
+		return 0, errors.New("read only zip filesystem")
+	}
+	fp, header, err := zfsrw.zipReader.OpenRaw(src)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot open file '%s'", src)
+	}
+	defer fp.Close()
+	newHeader := *header
+	newHeader.Name = dst
+	w, err := zfsrw.zipWriter.CreateRaw(&newHeader)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create file '%s'", dst)
+	}
+	return io.Copy(w, fp)
+}
+
+func (zfsrw *zipFSRW) Append(path string) (writefs.FileWrite, error) {
+	if zfsrw.readOnly {
+		return nil, errors.New("read-only filesystem")
+	}
+	src, err := zfsrw.zipReader.Open(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot open file '%s'", path)
+	}
+	dst, err := zfsrw.Create(path)
+	if err != nil {
+		src.Close()
+		return nil, errors.Wrapf(err, "cannot create file '%s'", path)
+	}
+	if _, err := io.Copy(dst, src); err != nil {
+		src.Close()
+		dst.Close()
+		return nil, errors.Wrapf(err, "cannot copy file '%s'", path)
+	}
+	return dst, nil
+}
+
+func (zfsrw *zipFSRW) Rename(oldPath, newPath string) error {
+	if zfsrw.readOnly {
+		return errors.New("read-only filesystem")
+	}
+	_, err := zfsrw.Copy(newPath, oldPath)
+	if err != nil {
+		return errors.Wrapf(err, "cannot copy file '%s' to '%s'", oldPath, newPath)
+	}
+	return nil
+}
+
+func (zfsrw *zipFSRW) Remove(path string) error {
+	zfsrw.newFiles = append(zfsrw.newFiles, path)
+	return nil
+}
+
+func (zfsrw *zipFSRW) WriteFile(name string, data []byte) (int64, error) {
+	if zfsrw.readOnly {
+		return 0, errors.Errorf("read only filesystem")
+	}
+	fp, err := zfsrw.Create(name)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create '%s'", name)
+	}
+	defer fp.Close()
+	n, err := fp.Write(data)
+	if err != nil {
+		return int64(n), errors.Wrapf(err, "cannot write to '%s'", name)
+	}
+	return int64(n), nil
+}
+
+func (zfsrw *zipFSRW) Fullpath(name string) (string, error) {
+	return name, nil
+}
+
+func (zfsrw *zipFSRW) Equal(fsys fs.FS) bool {
+	if zfs2, ok := fsys.(*zipFSRW); ok {
+		return zfsrw.name == zfs2.name
+	}
+	return false
+}
+
+func (zfsrw *zipFSRW) ReadFile(name string) ([]byte, error) {
+	if zfsrw.zipReader != nil {
+		return fs.ReadFile(zfsrw.zipReader, name)
+	}
+	return nil, fmt.Errorf("write only zip file")
+}
+
 func (zfsrw *zipFSRW) Stat(name string) (fs.FileInfo, error) {
 	if zfsrw.zipReader != nil {
 		return fs.Stat(zfsrw.zipReader, name)
@@ -126,10 +215,6 @@ func (zfsrw *zipFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 	return fs.ReadDir(zfsrw.zipReader, name)
 }
 
-func (zfsrw *zipFSRW) Sub(name string) (fs.FS, error) {
-	return writefs.NewSubFS(zfsrw, name), nil
-}
-
 func (zfsrw *zipFSRW) MkDir(string) error {
 	if zfsrw.readOnly {
 		return errors.New("read-only filesystem")
@@ -138,11 +223,6 @@ func (zfsrw *zipFSRW) MkDir(string) error {
 }
 
 var (
-	_ fs.ReadDirFS        = &fsFile{}
-	_ fs.FS               = &fsFile{}
-	_ fs.SubFS            = &fsFile{}
-	_ fs.StatFS           = &fsFile{}
-	_ writefs.ReadWriteFS = &fsFile{}
-	_ writefs.CloseFS     = &fsFile{}
-	_ fmt.Stringer        = &fsFile{}
+	_ writefs.FullFS = &zipFSRW{}
+	_ fmt.Stringer   = &zipFSRW{}
 )

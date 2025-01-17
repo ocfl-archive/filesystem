@@ -3,6 +3,7 @@ package zipfsrw
 import (
 	"github.com/je4/filesystem/v3/pkg/osfsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/rs/zerolog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,14 +14,15 @@ var factory *writefs.Factory
 
 func TestZipFSRWFactory(t *testing.T) {
 	var err error
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 	factory, err = writefs.NewFactory()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := factory.Register(osfsrw.NewCreateFSFunc(), "^file://", writefs.MediumFS); err != nil {
+	if err := factory.Register(osfsrw.NewCreateFSFunc(&logger), "^file://", writefs.MediumFS); err != nil {
 		t.Fatal(err)
 	}
-	if err := factory.Register(NewCreateFSFunc(false), "\\.zip$", writefs.HighFS); err != nil {
+	if err := factory.Register(NewCreateFSFunc(false, &logger), "\\.zip$", writefs.HighFS); err != nil {
 		t.Fatal(err)
 	}
 
@@ -31,7 +33,7 @@ func TestZipFSRWFactory(t *testing.T) {
 }
 
 func testZipFSRWFactory_create(t *testing.T) {
-	fs, err := factory.Get(testTmpFile)
+	fs, err := factory.Get(testTmpFile, false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -43,13 +43,13 @@ func NewFSFileEncryptedChecksums(baseFS fs.FS, path string, noCompression bool, 
 
 	handle := encWriter.GetKeysetHandle()
 
-	zipFS, err := NewFSFileChecksums(baseFS, path, noCompression, algs, logger, encWriter)
+	zipFS, err := NewFSFileChecksums(baseFS, path, noCompression, algs, false, logger, encWriter)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create zipFS")
 	}
 
 	return &fsFileEncryptedChecksums{
-		fsFileChecksums: zipFS,
+		fsFileChecksums: zipFS.(*fsFileChecksums),
 		aad:             []byte(path),
 		handle:          handle,
 		encWriter:       encWriter,

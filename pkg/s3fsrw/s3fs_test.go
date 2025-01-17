@@ -130,7 +130,7 @@ func TestS3FS(t *testing.T) {
 			&logger,
 		), ARNRegexStr, writefs.MediumFS)
 
-	s3fs, err := testS3FSFactory.Get("arn:local:s3:::")
+	s3fs, err := testS3FSFactory.Get("arn:local:s3:::", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,14 +160,14 @@ func TestS3FS(t *testing.T) {
 			}
 		}
 	})
-	t.Run("create & read 2", func(t *testing.T) {
-		subFS, err := fs.Sub(s3fs, "test2")
+	t.Run("create & copy & read 2", func(t *testing.T) {
+		subFS, err := writefs.Sub(s3fs, "test2")
 		if err != nil {
 			t.Fatal(err)
 		}
 		for i := 0; i < 10; i++ {
-			testx := fmt.Sprintf("test%d", i)
-			fp, err := writefs.Create(subFS, ""+testx+".txt")
+			testx := fmt.Sprintf("test%d.txt", i)
+			fp, err := writefs.Create(subFS, testx)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -179,12 +179,20 @@ func TestS3FS(t *testing.T) {
 			}
 		}
 		for i := 0; i < 10; i++ {
-			testx := fmt.Sprintf("test%d", i)
-			data, err := fs.ReadFile(subFS, ""+testx+".txt")
+			src := fmt.Sprintf("test%d.txt", i)
+			dst := fmt.Sprintf("testcopy%d.txt", i)
+			if _, err := writefs.Copy(subFS, src, dst); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for i := 0; i < 10; i++ {
+			testx := fmt.Sprintf("testcopy%d.txt", i)
+			contentx := fmt.Sprintf("test%d.txt", i)
+			data, err := fs.ReadFile(subFS, testx)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(data) != testx {
+			if string(data) != contentx {
 				t.Fatal("wrong data")
 			}
 		}

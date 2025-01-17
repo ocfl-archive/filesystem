@@ -48,6 +48,13 @@ type remoteFSRW struct {
 	jwtKey   string
 }
 
+func (d *remoteFSRW) Equal(fsys fs.FS) bool {
+	if fsys, ok := fsys.(*remoteFSRW); ok {
+		return d.vfs == fsys.vfs && d.dir == fsys.dir
+	}
+	return false
+}
+
 func (d *remoteFSRW) Fullpath(name string) (string, error) {
 	return fmt.Sprintf("vfs://%s/%s", d.vfs, filepath.ToSlash(filepath.Join(d.dir, name))), nil
 }
@@ -199,6 +206,7 @@ func (d *remoteFSRW) ReadFile(name string) ([]byte, error) {
 }
 
 var (
+	_ writefs.EqualFS     = &remoteFSRW{}
 	_ writefs.CreateFS    = &remoteFSRW{}
 	_ writefs.ReadWriteFS = &remoteFSRW{}
 	//_ writefs.MkDirFS     = &remoteFSRW{}

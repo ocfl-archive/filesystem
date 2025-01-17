@@ -86,6 +86,13 @@ type s3FSRW struct {
 	readOnly bool
 }
 
+func (s3FS *s3FSRW) Equal(fsys fs.FS) bool {
+	if s3FS2, ok := fsys.(*s3FSRW); ok {
+		return s3FS.endpoint == s3FS2.endpoint && s3FS.region == s3FS2.region && s3FS.readOnly == s3FS2.readOnly
+	}
+	return false
+}
+
 func (s3FS *s3FSRW) Close() error {
 	return nil
 }
@@ -301,7 +308,7 @@ func (s3FS *s3FSRW) Remove(path string) error {
 }
 
 func (s3FS *s3FSRW) Sub(subfolder string) (fs.FS, error) {
-	return writefs.NewSubFS(s3FS, subfolder), nil
+	return writefs.Sub(s3FS, subfolder)
 }
 
 func (s3FS *s3FSRW) String() string {
@@ -429,10 +436,6 @@ func (s3FS *s3FSRW) HasContent() bool {
 }
 
 var (
-	_ fs.ReadDirFS   = &s3FSRW{}
-	_ fs.ReadFileFS  = &s3FSRW{}
-	_ fs.StatFS      = &s3FSRW{}
-	_ fs.SubFS       = &s3FSRW{}
 	_ fmt.Stringer   = &s3FSRW{}
 	_ writefs.FullFS = &s3FSRW{}
 )

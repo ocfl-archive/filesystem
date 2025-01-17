@@ -91,13 +91,13 @@ func (ctrl *mainController) Start(wg *sync.WaitGroup) {
 			fmt.Printf("starting server at http://%s\n", ctrl.addr)
 			if err := ctrl.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 				// unexpected error. port in use?
-				fmt.Errorf("server on '%s' ended: %v", ctrl.addr, err)
+				ctrl.logger.Error().Err(err).Msgf("server on '%s' ended", ctrl.addr)
 			}
 		} else {
 			fmt.Printf("starting server at https://%s\n", ctrl.addr)
 			if err := ctrl.server.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
 				// unexpected error. port in use?
-				fmt.Errorf("server on '%s' ended: %v", ctrl.addr, err)
+				ctrl.logger.Error().Err(err).Msgf("server on '%s' ended", ctrl.addr)
 			}
 		}
 		// always returns error. ErrServerClosed on graceful close

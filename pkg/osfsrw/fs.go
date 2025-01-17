@@ -4,6 +4,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -48,6 +49,37 @@ type osFSRW struct {
 	dir      string
 	logger   zLogger.ZLogger
 	readOnly bool
+}
+
+func (d *osFSRW) Copy(dst, src string) (int64, error) {
+	if d.readOnly {
+		return 0, errors.New("read only filesystem")
+	}
+	fpSrc, err := os.Open(filepath.Join(d.dir, src))
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot open file '%s'", src)
+	}
+	defer fpSrc.Close()
+	fpDest, err := os.Create(filepath.Join(d.dir, dst))
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create file '%s'", dst)
+	}
+	num, err := io.Copy(fpDest, fpSrc)
+	if err != nil {
+		fpDest.Close()
+		return 0, errors.Wrapf(err, "cannot copy file '%s' to '%s'", src, dst)
+	}
+	if err := fpDest.Close(); err != nil {
+		return 0, errors.Wrapf(err, "cannot close file '%s'", dst)
+	}
+	return num, nil
+}
+
+func (d *osFSRW) Equal(fsys fs.FS) bool {
+	if ofsys, ok := fsys.(*osFSRW); ok {
+		return d.dir == ofsys.dir
+	}
+	return false
 }
 
 func (d *osFSRW) Fullpath(name string) (string, error) {

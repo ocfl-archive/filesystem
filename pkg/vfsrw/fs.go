@@ -95,6 +95,25 @@ type vFSRW struct {
 	fss map[string]fs.FS
 }
 
+func (vfs *vFSRW) Equal(fsys fs.FS) bool {
+	if vFS, ok := fsys.(*vFSRW); ok {
+		if len(vFS.fss) != len(vfs.fss) {
+			return false
+		}
+		for name, fs := range vfs.fss {
+			fs2, ok := vFS.fss[name]
+			if !ok {
+				return false
+			}
+			if !writefs.Equal(fs, fs2) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func (vfs *vFSRW) Close() error {
 	var errs = []error{}
 	for _, fs := range vfs.fss {
@@ -175,10 +194,6 @@ func (vfs *vFSRW) String() string {
 	return fmt.Sprintf("vFSRW(%v)", names)
 }
 
-func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
-	return writefs.NewSubFS(vfs, dir), nil
-}
-
 func (vfs *vFSRW) Stat(name string) (fs.FileInfo, error) {
 	vFS, path, err := vfs.getFS(name)
 	if err != nil {
@@ -239,12 +254,54 @@ func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
 	return vFS, path, nil
 }
 
+func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
+	srcName, srcPath, err := matchPath(src)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	srcFS, ok := vfs.fss[srcName]
+	if !ok {
+		return 0, errors.Errorf("vfs '%s' not configured for path '%s'", srcName, src)
+	}
+	dstName, dstPath, err := matchPath(dst)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+	dstFS, ok := vfs.fss[dstName]
+	if !ok {
+		return 0, errors.Errorf("vfs '%s' not configured for path '%s'", dstName, dst)
+	}
+	if writefs.Equal(srcFS, dstFS) {
+		if copyFS, ok := srcFS.(writefs.CopyFS); ok {
+			num, err := copyFS.Copy(srcPath, dstPath)
+			return num, errors.Wrapf(err, "cannot copy '%s' -> '%s' on '%s'", src, dst, srcName)
+		}
+	}
+	srcFP, err := srcFS.Open(srcPath)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot open source '%s'", src)
+	}
+	defer srcFP.Close()
+	dstFP, err := writefs.Create(dstFS, dstPath)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create destination '%s'", dst)
+	}
+	num, err := io.Copy(dstFP, srcFP)
+	if err != nil {
+		dstFP.Close()
+		return 0, errors.Wrapf(err, "cannot copy '%s' -> '%s'", src, dst)
+	}
+	if err := dstFP.Close(); err != nil {
+		return 0, errors.Wrapf(err, "cannot close destination '%s'", dst)
+	}
+	return num, nil
+}
+
 var (
 	_ fs.FS         = (*vFSRW)(nil)
 	_ fs.ReadDirFS  = (*vFSRW)(nil)
 	_ fs.ReadFileFS = (*vFSRW)(nil)
 	_ fs.StatFS     = (*vFSRW)(nil)
-	_ fs.SubFS      = (*vFSRW)(nil)
 	//	_ writefs.IsLockedFS = (*vFSRW)(nil)
 	_ fmt.Stringer        = (*vFSRW)(nil)
 	_ writefs.ReadWriteFS = (*vFSRW)(nil)
@@ -252,4 +309,6 @@ var (
 	_ writefs.RenameFS    = (*vFSRW)(nil)
 	_ writefs.RemoveFS    = (*vFSRW)(nil)
 	_ writefs.CreateFS    = (*vFSRW)(nil)
+	_ writefs.EqualFS     = (*vFSRW)(nil)
+	_ writefs.CopyFS      = (*vFSRW)(nil)
 )

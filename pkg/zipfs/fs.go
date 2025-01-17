@@ -14,7 +14,7 @@ import (
 
 type OpenRawZipFS interface {
 	fs.FS
-	OpenRaw(name string) (fs.File, error)
+	OpenRaw(name string) (fs.File, *zip.FileHeader, error)
 	GetZipReader() *zip.Reader
 }
 
@@ -40,8 +40,47 @@ type zipFS struct {
 	logger zLogger.ZLogger
 }
 
-func (zfs *zipFS) Sub(dir string) (fs.FS, error) {
-	return writefs.NewSubFS(zfs, dir), nil
+func (zfs *zipFS) Copy(dst, src string) (int64, error) {
+	return 0, errors.New("read only zip filesystem")
+}
+
+func (zfs *zipFS) Create(path string) (writefs.FileWrite, error) {
+	return nil, errors.New("read only zip filesystem not implemented")
+}
+
+func (zfs *zipFS) Append(path string) (writefs.FileWrite, error) {
+	return nil, errors.New("read only zip filesystem not implemented")
+}
+
+func (zfs *zipFS) MkDir(path string) error {
+	return errors.New("read only zip filesystem not implemented")
+}
+
+func (zfs *zipFS) Rename(oldPath, newPath string) error {
+	return errors.New("read only zip filesystem not implemented")
+}
+
+func (zfs *zipFS) Remove(path string) error {
+	return errors.New("read only zip filesystem not implemented")
+}
+
+func (zfs *zipFS) Close() error {
+	return nil
+}
+
+func (zfs *zipFS) WriteFile(name string, data []byte) (int64, error) {
+	return 0, errors.New("read only zip filesystem not implemented")
+}
+
+func (zfs *zipFS) Fullpath(name string) (string, error) {
+	return name, nil
+}
+
+func (zfs *zipFS) Equal(fsys fs.FS) bool {
+	if zfs2, ok := fsys.(*zipFS); ok {
+		return zfs.name == zfs2.name
+	}
+	return false
 }
 
 func (zfs *zipFS) String() string {
@@ -54,7 +93,7 @@ func (zfs *zipFS) GetZipReader() *zip.Reader {
 
 /*
 func (zfs *zipFS) Sub(dir string) (fs.FS, error) {
-	return fs.Sub(zfs, dir)
+	return writefs.Sub(zfs, dir)
 }
 
 */
@@ -126,18 +165,18 @@ func (zfs *zipFS) Open(name string) (fs.File, error) {
 	return nil, fs.ErrNotExist
 }
 
-func (zfs *zipFS) OpenRaw(name string) (fs.File, error) {
+func (zfs *zipFS) OpenRaw(name string) (fs.File, *zip.FileHeader, error) {
 	for _, f := range zfs.File {
 		if f.Name == name {
 			w, err := f.OpenRaw()
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to open file '%s'", name)
+				return nil, nil, errors.Wrapf(err, "failed to open file '%s'", name)
 			}
 			zfs.mutex.Lock()
-			return NewFile(f.FileInfo(), writefs.NewNopReadCloser(w), zfs.mutex), nil
+			return NewFile(f.FileInfo(), writefs.NewNopReadCloser(w), zfs.mutex), &f.FileHeader, nil
 		}
 	}
-	return nil, fs.ErrNotExist
+	return nil, nil, fs.ErrNotExist
 }
 
 func (zfs *zipFS) IsLocked() bool {
@@ -145,11 +184,7 @@ func (zfs *zipFS) IsLocked() bool {
 }
 
 var (
-	_ fs.FS              = (*zipFS)(nil)
-	_ fs.ReadDirFS       = (*zipFS)(nil)
-	_ fs.ReadFileFS      = (*zipFS)(nil)
-	_ fs.StatFS          = (*zipFS)(nil)
-	_ fs.SubFS           = (*zipFS)(nil)
+	_ writefs.FullFS     = (*zipFS)(nil)
 	_ writefs.IsLockedFS = (*zipFS)(nil)
 	_ OpenRawZipFS       = (*zipFS)(nil)
 	_ fmt.Stringer       = (*zipFS)(nil)
