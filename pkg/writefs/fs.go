@@ -42,6 +42,10 @@ type EqualFS interface {
 	Equal(fsys fs.FS) bool
 }
 
+type JoinFS interface {
+	Join(fsys fs.FS, elems ...string) string
+}
+
 type FullFS interface {
 	CopyFS
 	CreateFS

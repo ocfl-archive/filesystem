@@ -40,30 +40,6 @@ type zipFS struct {
 	logger zLogger.ZLogger
 }
 
-func (zfs *zipFS) Copy(dst, src string) (int64, error) {
-	return 0, errors.New("read only zip filesystem")
-}
-
-func (zfs *zipFS) Create(path string) (writefs.FileWrite, error) {
-	return nil, errors.New("read only zip filesystem not implemented")
-}
-
-func (zfs *zipFS) Append(path string) (writefs.FileWrite, error) {
-	return nil, errors.New("read only zip filesystem not implemented")
-}
-
-func (zfs *zipFS) MkDir(path string) error {
-	return errors.New("read only zip filesystem not implemented")
-}
-
-func (zfs *zipFS) Rename(oldPath, newPath string) error {
-	return errors.New("read only zip filesystem not implemented")
-}
-
-func (zfs *zipFS) Remove(path string) error {
-	return errors.New("read only zip filesystem not implemented")
-}
-
 func (zfs *zipFS) Close() error {
 	return nil
 }
@@ -184,8 +160,15 @@ func (zfs *zipFS) IsLocked() bool {
 }
 
 var (
-	_ writefs.FullFS     = (*zipFS)(nil)
-	_ writefs.IsLockedFS = (*zipFS)(nil)
-	_ OpenRawZipFS       = (*zipFS)(nil)
-	_ fmt.Stringer       = (*zipFS)(nil)
+	_ writefs.IsLockedFS  = (*zipFS)(nil)
+	_ OpenRawZipFS        = (*zipFS)(nil)
+	_ fmt.Stringer        = (*zipFS)(nil)
+	_ writefs.CloseFS     = (*zipFS)(nil)
+	_ writefs.WriteFileFS = (*zipFS)(nil)
+	_ writefs.FullpathFS  = (*zipFS)(nil)
+	_ writefs.EqualFS     = (*zipFS)(nil)
+	_ fs.FS               = (*zipFS)(nil)
+	_ fs.ReadDirFS        = (*zipFS)(nil)
+	_ fs.ReadFileFS       = (*zipFS)(nil)
+	_ fs.StatFS           = (*zipFS)(nil)
 )

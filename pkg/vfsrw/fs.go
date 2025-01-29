@@ -7,6 +7,7 @@ import (
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"strings"
 )
 
@@ -254,6 +255,16 @@ func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
 	return vFS, path, nil
 }
 
+func (vfs *vFSRW) Join(fsys fs.FS, elems ...string) string {
+	if !strings.HasPrefix(elems[0], "vfs://") {
+		return filepath.ToSlash(filepath.Join(elems...))
+	}
+	newElems := make([]string, len(elems))
+	newElems[0] = elems[0][6:]
+	copy(newElems[1:], elems[1:])
+	return "vfs://" + filepath.ToSlash(filepath.Join(newElems...))
+}
+
 func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 	srcName, srcPath, err := matchPath(src)
 	if err != nil {
@@ -298,17 +309,16 @@ func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 }
 
 var (
-	_ fs.FS         = (*vFSRW)(nil)
-	_ fs.ReadDirFS  = (*vFSRW)(nil)
-	_ fs.ReadFileFS = (*vFSRW)(nil)
-	_ fs.StatFS     = (*vFSRW)(nil)
-	//	_ writefs.IsLockedFS = (*vFSRW)(nil)
-	_ fmt.Stringer        = (*vFSRW)(nil)
-	_ writefs.ReadWriteFS = (*vFSRW)(nil)
-	_ writefs.MkDirFS     = (*vFSRW)(nil)
-	_ writefs.RenameFS    = (*vFSRW)(nil)
-	_ writefs.RemoveFS    = (*vFSRW)(nil)
-	_ writefs.CreateFS    = (*vFSRW)(nil)
-	_ writefs.EqualFS     = (*vFSRW)(nil)
-	_ writefs.CopyFS      = (*vFSRW)(nil)
+	_ fmt.Stringer     = (*vFSRW)(nil)
+	_ writefs.CopyFS   = (*vFSRW)(nil)
+	_ writefs.CreateFS = (*vFSRW)(nil)
+	_ writefs.MkDirFS  = (*vFSRW)(nil)
+	_ writefs.RenameFS = (*vFSRW)(nil)
+	_ writefs.RemoveFS = (*vFSRW)(nil)
+	_ writefs.CloseFS  = (*vFSRW)(nil)
+	_ writefs.EqualFS  = (*vFSRW)(nil)
+	_ fs.FS            = (*vFSRW)(nil)
+	_ fs.ReadDirFS     = (*vFSRW)(nil)
+	_ fs.ReadFileFS    = (*vFSRW)(nil)
+	_ fs.StatFS        = (*vFSRW)(nil)
 )

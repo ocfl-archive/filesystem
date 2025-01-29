@@ -4,6 +4,7 @@ import (
 	"emperror.dev/errors"
 	"io"
 	"io/fs"
+	"path/filepath"
 )
 
 var ErrNotImplemented = errors.NewPlain("not implemented")
@@ -35,7 +36,21 @@ func Rename(fsys fs.FS, oldPath, newPath string) error {
 	if _fsys, ok := fsys.(RenameFS); ok {
 		return _fsys.Rename(oldPath, newPath)
 	}
-	return errors.Wrap(ErrNotImplemented, "Rename")
+
+	if _, ok := fsys.(RemoveFS); !ok {
+		return errors.Wrap(ErrNotImplemented, "Cannot Rename: Remove")
+	}
+	if _, ok := fsys.(CopyFS); !ok {
+		return errors.Wrap(ErrNotImplemented, "Cannot Rename: Copy")
+	}
+
+	if _, err := Copy(fsys, oldPath, newPath); err != nil {
+		return errors.Wrapf(err, "cannot copy '%s' to '%s'", oldPath, newPath)
+	}
+	if err := Remove(fsys, oldPath); err != nil {
+		return errors.Wrapf(err, "cannot remove '%s'", oldPath)
+	}
+	return nil
 }
 
 func Create(fsys fs.FS, path string) (FileWrite, error) {
@@ -145,4 +160,11 @@ func Copy(fsys fs.FS, src, dst string) (int64, error) {
 		return _fsys.Copy(dst, src)
 	}
 	return _copy(fsys, src, dst)
+}
+
+func Join(fsys fs.FS, elems ...string) string {
+	if _fsys, ok := fsys.(JoinFS); ok {
+		return _fsys.Join(fsys, elems...)
+	}
+	return filepath.ToSlash(filepath.Join(elems...))
 }

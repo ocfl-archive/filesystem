@@ -52,58 +52,11 @@ type sftpFSRW struct {
 	readOnly     bool
 }
 
-func (sftpFS *sftpFSRW) Copy(dst, src string) (int64, error) {
-	if sftpFS.readOnly {
-		return 0, errors.New("read only filesystem")
-	}
-	sess, err := sftpFS.getSession(time.Second * 10)
-	if err != nil {
-		return 0, errors.Wrapf(err, "cannot get sftp session")
-	}
-	defer sftpFS.closeSession(sess)
-	src = filepath.ToSlash(filepath.Join(sftpFS.baseDir, src))
-	dst = filepath.ToSlash(filepath.Join(sftpFS.baseDir, dst))
-	fpSrc, err := sess.Open(src)
-	if err != nil {
-		return 0, errors.Wrapf(err, "cannot open file '%s'", src)
-	}
-	defer fpSrc.Close()
-	fpDest, err := sess.Create(dst)
-	if err != nil {
-		return 0, errors.Wrapf(err, "cannot create file '%s'", dst)
-	}
-	num, err := io.Copy(fpDest, fpSrc)
-	if err != nil {
-		fpDest.Close()
-		return 0, errors.Wrapf(err, "cannot copy file '%s' to '%s'", src, dst)
-	}
-	if err := fpDest.Close(); err != nil {
-		return 0, errors.Wrapf(err, "cannot close file '%s'", dst)
-	}
-	return num, nil
-}
-
 func (sftpFS *sftpFSRW) Equal(fsys fs.FS) bool {
 	if sftpFS2, ok := fsys.(*sftpFSRW); ok {
 		return sftpFS.addr == sftpFS2.addr && sftpFS.baseDir == sftpFS2.baseDir && sftpFS.user == sftpFS2.user
 	}
 	return false
-}
-
-func (sftpFS *sftpFSRW) WriteFile(name string, data []byte) (int64, error) {
-	if sftpFS.readOnly {
-		return 0, errors.Errorf("read only filesystem")
-	}
-	fp, err := sftpFS.Create(name)
-	if err != nil {
-		return 0, errors.Wrapf(err, "cannot create '%s'", name)
-	}
-	defer fp.Close()
-	n, err := fp.Write(data)
-	if err != nil {
-		return int64(n), errors.Wrapf(err, "cannot write to '%s'", name)
-	}
-	return int64(n), nil
 }
 
 func (sftpFS *sftpFSRW) Fullpath(name string) (string, error) {
@@ -278,6 +231,17 @@ func (sftpFS *sftpFSRW) Close() error {
 }
 
 var (
-	_ fmt.Stringer   = (*sftpFSRW)(nil)
-	_ writefs.FullFS = (*sftpFSRW)(nil)
+	_ fmt.Stringer       = (*sftpFSRW)(nil)
+	_ writefs.CreateFS   = (*sftpFSRW)(nil)
+	_ writefs.AppendFS   = (*sftpFSRW)(nil)
+	_ writefs.MkDirFS    = (*sftpFSRW)(nil)
+	_ writefs.RenameFS   = (*sftpFSRW)(nil)
+	_ writefs.RemoveFS   = (*sftpFSRW)(nil)
+	_ writefs.CloseFS    = (*sftpFSRW)(nil)
+	_ writefs.FullpathFS = (*sftpFSRW)(nil)
+	_ writefs.EqualFS    = (*sftpFSRW)(nil)
+	_ fs.FS              = (*sftpFSRW)(nil)
+	_ fs.ReadDirFS       = (*sftpFSRW)(nil)
+	_ fs.ReadFileFS      = (*sftpFSRW)(nil)
+	_ fs.StatFS          = (*sftpFSRW)(nil)
 )

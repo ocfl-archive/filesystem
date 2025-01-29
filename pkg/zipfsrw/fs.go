@@ -75,36 +75,9 @@ func (zfsrw *zipFSRW) Append(path string) (writefs.FileWrite, error) {
 	return dst, nil
 }
 
-func (zfsrw *zipFSRW) Rename(oldPath, newPath string) error {
-	if zfsrw.readOnly {
-		return errors.New("read-only filesystem")
-	}
-	_, err := zfsrw.Copy(newPath, oldPath)
-	if err != nil {
-		return errors.Wrapf(err, "cannot copy file '%s' to '%s'", oldPath, newPath)
-	}
-	return nil
-}
-
 func (zfsrw *zipFSRW) Remove(path string) error {
 	zfsrw.newFiles = append(zfsrw.newFiles, path)
 	return nil
-}
-
-func (zfsrw *zipFSRW) WriteFile(name string, data []byte) (int64, error) {
-	if zfsrw.readOnly {
-		return 0, errors.Errorf("read only filesystem")
-	}
-	fp, err := zfsrw.Create(name)
-	if err != nil {
-		return 0, errors.Wrapf(err, "cannot create '%s'", name)
-	}
-	defer fp.Close()
-	n, err := fp.Write(data)
-	if err != nil {
-		return int64(n), errors.Wrapf(err, "cannot write to '%s'", name)
-	}
-	return int64(n), nil
 }
 
 func (zfsrw *zipFSRW) Fullpath(name string) (string, error) {
@@ -223,6 +196,17 @@ func (zfsrw *zipFSRW) MkDir(string) error {
 }
 
 var (
-	_ writefs.FullFS = &zipFSRW{}
-	_ fmt.Stringer   = &zipFSRW{}
+	_ fmt.Stringer       = (*zipFSRW)(nil)
+	_ writefs.CopyFS     = (*zipFSRW)(nil)
+	_ writefs.CreateFS   = (*zipFSRW)(nil)
+	_ writefs.AppendFS   = (*zipFSRW)(nil)
+	_ writefs.MkDirFS    = (*zipFSRW)(nil)
+	_ writefs.RemoveFS   = (*zipFSRW)(nil)
+	_ writefs.CloseFS    = (*zipFSRW)(nil)
+	_ writefs.FullpathFS = (*zipFSRW)(nil)
+	_ writefs.EqualFS    = (*zipFSRW)(nil)
+	_ fs.FS              = (*zipFSRW)(nil)
+	_ fs.ReadDirFS       = (*zipFSRW)(nil)
+	_ fs.ReadFileFS      = (*zipFSRW)(nil)
+	_ fs.StatFS          = (*zipFSRW)(nil)
 )

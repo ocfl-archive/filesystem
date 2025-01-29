@@ -81,6 +81,13 @@ type zipAsFolderFS struct {
 	readOnly bool
 }
 
+func (fsys *zipAsFolderFS) Equal(fsys2 fs.FS) bool {
+	if fsys2, ok := fsys2.(*zipAsFolderFS); ok {
+		return fsys.baseFS == fsys2.baseFS
+	}
+	return false
+}
+
 func (fsys *zipAsFolderFS) Fullpath(name string) (string, error) {
 	return writefs.Fullpath(fsys.baseFS, name)
 }
@@ -269,11 +276,14 @@ func expandZipFile(name string) (zipFile string, zipPath string, isZip bool) {
 }
 
 var (
-	_ writefs.ReadWriteFS = (*zipAsFolderFS)(nil)
-	_ writefs.MkDirFS     = (*zipAsFolderFS)(nil)
-	_ writefs.CloseFS     = (*zipAsFolderFS)(nil)
-	_ writefs.FullpathFS  = (*zipAsFolderFS)(nil)
-	_ fs.ReadDirFS        = (*zipAsFolderFS)(nil)
-	_ fs.ReadFileFS       = (*zipAsFolderFS)(nil)
-	_ fmt.Stringer        = (*zipAsFolderFS)(nil)
+	_ fmt.Stringer       = (*zipAsFolderFS)(nil)
+	_ writefs.CreateFS   = (*zipAsFolderFS)(nil)
+	_ writefs.MkDirFS    = (*zipAsFolderFS)(nil)
+	_ writefs.CloseFS    = (*zipAsFolderFS)(nil)
+	_ writefs.FullpathFS = (*zipAsFolderFS)(nil)
+	_ writefs.EqualFS    = (*zipAsFolderFS)(nil)
+	_ fs.FS              = (*zipAsFolderFS)(nil)
+	_ fs.ReadDirFS       = (*zipAsFolderFS)(nil)
+	_ fs.ReadFileFS      = (*zipAsFolderFS)(nil)
+	_ fs.StatFS          = (*zipAsFolderFS)(nil)
 )
