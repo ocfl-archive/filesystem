@@ -174,7 +174,12 @@ func (d *osFSRW) WriteFile(name string, data []byte) (int64, error) {
 	if d.readOnly {
 		return 0, errors.New("read only filesystem")
 	}
-	if err := os.WriteFile(filepath.Join(d.dir, name), data, 0644); err != nil {
+	fullpath := filepath.ToSlash(filepath.Join(d.dir, name))
+	dir := filepath.Dir(fullpath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return 0, errors.Wrapf(err, "cannot create directory '%s'", dir)
+	}
+	if err := os.WriteFile(fullpath, data, 0644); err != nil {
 		return 0, errors.Wrapf(err, "cannot write file '%s'", name)
 	}
 	return int64(len(data)), nil
