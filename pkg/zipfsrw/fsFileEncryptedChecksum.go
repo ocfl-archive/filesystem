@@ -15,6 +15,7 @@ import (
 	"io"
 	"io/fs"
 	"strings"
+	"time"
 )
 
 // NewFSFileEncryptedChecksums creates a new ReadWriteFS
@@ -74,16 +75,32 @@ func (zfsrw *fsFileEncryptedChecksums) String() string {
 }
 
 func (zfsrw *fsFileEncryptedChecksums) Close() error {
+	if zfsrw == nil {
+		return errors.New("cannot close nil fsFileEncryptedChecksums")
+	}
 	var errs = []error{}
 
+	time.Sleep(1 * time.Second)
+	if zfsrw.fsFileChecksums == nil {
+		return errors.New("cannot close nil fsFileEncryptedChecksums.fsFileChecksums")
+	}
 	if err := zfsrw.fsFileChecksums.Close(); err != nil {
 		errs = append(errs, err)
+	}
+	if zfsrw.csEncBuffer == nil {
+		return errors.New("cannot close nil fsFileEncryptedChecksums.csEncBuffer")
 	}
 	if err := zfsrw.csEncBuffer.Flush(); err != nil {
 		errs = append(errs, err)
 	}
+	if zfsrw.encWriter == nil {
+		return errors.New("cannot flush nil fsFileEncryptedChecksums.encWriter")
+	}
 	if err := zfsrw.encWriter.Close(); err != nil {
 		errs = append(errs, err)
+	}
+	if zfsrw.csEncWriter == nil {
+		return errors.New("cannot close nil fsFileEncryptedChecksums.csEncWriter")
 	}
 	if err := zfsrw.csEncWriter.Close(); err != nil {
 		errs = append(errs, err)
@@ -92,19 +109,18 @@ func (zfsrw *fsFileEncryptedChecksums) Close() error {
 	if len(errs) == 0 {
 		client, err := registry.GetKMSClient(zfsrw.keyURI)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "cannot get KMS client for '%s'", zfsrw.keyURI))
+			return errors.Wrapf(err, "cannot get KMS client for '%s'", zfsrw.keyURI)
 		}
 		aead, err := client.GetAEAD(zfsrw.keyURI)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "cannot get AEAD for entry '%s'", zfsrw.keyURI))
+			return errors.Wrapf(err, "cannot get AEAD for entry '%s'", zfsrw.keyURI)
 		}
-
 		keyFileName := zfsrw.path + ".aes.key.json"
 		keyBuf := bytes.NewBuffer(nil)
 		wr := keyset.NewBinaryWriter(keyBuf)
 
 		if err := zfsrw.handle.Write(wr, aead); err != nil {
-			errs = append(errs, errors.Wrapf(err, "cannot write %s", keyFileName))
+			return errors.Wrapf(err, "cannot write %s", keyFileName)
 		}
 		ts := encrypt.KeyStruct{
 			EncryptedKey: keyBuf.Bytes(),
@@ -112,10 +128,10 @@ func (zfsrw *fsFileEncryptedChecksums) Close() error {
 		}
 		jsonBytes, err := json.Marshal(ts)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "cannot marshal %s", keyFileName))
+			return errors.Wrapf(err, "cannot marshal %s", keyFileName)
 		} else {
 			if _, err := writefs.WriteFile(zfsrw.baseFS, keyFileName, jsonBytes); err != nil {
-				errs = append(errs, errors.Wrapf(err, "cannot write %s", keyFileName))
+				return errors.Wrapf(err, "cannot write %s", keyFileName)
 			}
 		}
 
