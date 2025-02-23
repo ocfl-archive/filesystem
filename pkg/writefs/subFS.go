@@ -4,7 +4,7 @@ import (
 	"emperror.dev/errors"
 	"fmt"
 	"io/fs"
-	"path/filepath"
+	"path"
 )
 
 type subFS struct {
@@ -21,14 +21,14 @@ func Sub(fsys fs.FS, dir string) (fs.FS, error) {
 
 func (sfs *subFS) Copy(dst, src string) (int64, error) {
 	if copyFS, ok := sfs.fsys.(CopyFS); ok {
-		return copyFS.Copy(filepath.ToSlash(filepath.Join(sfs.dir, dst)), filepath.ToSlash(filepath.Join(sfs.dir, src)))
+		return copyFS.Copy(path.Join(sfs.dir, dst), path.Join(sfs.dir, src))
 	}
-	return _copy(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, dst)), filepath.ToSlash(filepath.Join(sfs.dir, src)))
+	return _copy(sfs.fsys, path.Join(sfs.dir, dst), path.Join(sfs.dir, src))
 }
 
-func (sfs *subFS) Append(path string) (FileWrite, error) {
+func (sfs *subFS) Append(pathStr string) (FileWrite, error) {
 	if appendFS, ok := sfs.fsys.(AppendFS); ok {
-		return appendFS.Append(filepath.ToSlash(filepath.Join(sfs.dir, path)))
+		return appendFS.Append(path.Join(sfs.dir, pathStr))
 	}
 	return nil, errors.Wrap(ErrNotImplemented, "Append")
 }
@@ -39,9 +39,9 @@ func (sfs *subFS) Close() error {
 
 func (sfs *subFS) WriteFile(name string, data []byte) (int64, error) {
 	if writeFileFS, ok := sfs.fsys.(WriteFileFS); ok {
-		return writeFileFS.WriteFile(filepath.ToSlash(filepath.Join(sfs.dir, name)), data)
+		return writeFileFS.WriteFile(path.Join(sfs.dir, name), data)
 	}
-	return writeFile(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, name)), data)
+	return writeFile(sfs.fsys, path.Join(sfs.dir, name), data)
 }
 
 func (sfs *subFS) Equal(fsys fs.FS) bool {
@@ -52,7 +52,7 @@ func (sfs *subFS) Equal(fsys fs.FS) bool {
 }
 
 func (sfs *subFS) Fullpath(name string) (string, error) {
-	return Fullpath(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, name)))
+	return Fullpath(sfs.fsys, path.Join(sfs.dir, name))
 }
 
 func (sfs *subFS) String() string {
@@ -62,45 +62,45 @@ func (sfs *subFS) String() string {
 func (sfs *subFS) Rename(oldPath, newPath string) error {
 	return Rename(
 		sfs.fsys,
-		filepath.ToSlash(filepath.Join(sfs.dir, oldPath)),
-		filepath.ToSlash(filepath.Join(sfs.dir, newPath)),
+		path.Join(sfs.dir, oldPath),
+		path.Join(sfs.dir, newPath),
 	)
 }
 
-func (sfs *subFS) Remove(path string) error {
-	return Remove(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, path)))
+func (sfs *subFS) Remove(pathStr string) error {
+	return Remove(sfs.fsys, path.Join(sfs.dir, pathStr))
 }
 
 func (sfs *subFS) Open(name string) (fs.File, error) {
-	return sfs.fsys.Open(filepath.ToSlash(filepath.Join(sfs.dir, name)))
+	return sfs.fsys.Open(path.Join(sfs.dir, name))
 }
 
 func (sfs *subFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, name)))
+	return fs.ReadDir(sfs.fsys, path.Join(sfs.dir, name))
 }
 
 func (sfs *subFS) ReadFile(name string) ([]byte, error) {
-	return fs.ReadFile(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, name)))
+	return fs.ReadFile(sfs.fsys, path.Join(sfs.dir, name))
 }
 
 func (sfs *subFS) Stat(name string) (fs.FileInfo, error) {
-	return fs.Stat(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, name)))
+	return fs.Stat(sfs.fsys, path.Join(sfs.dir, name))
 }
 
 func (sfs *subFS) Sub(dir string) (fs.FS, error) {
-	return Sub(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, dir)))
+	return Sub(sfs.fsys, path.Join(sfs.dir, dir))
 }
 
-func (sfs *subFS) Create(path string) (FileWrite, error) {
-	return Create(sfs.fsys, filepath.ToSlash(filepath.Join(sfs.dir, path)))
+func (sfs *subFS) Create(pathStr string) (FileWrite, error) {
+	return Create(sfs.fsys, path.Join(sfs.dir, pathStr))
 }
 
-func (sfs *subFS) MkDir(path string) error {
+func (sfs *subFS) MkDir(pathStr string) error {
 	mkdirFS, ok := sfs.fsys.(MkDirFS)
 	if !ok {
 		return errors.New("fs does not support MkDir")
 	}
-	return mkdirFS.MkDir(filepath.ToSlash(filepath.Join(sfs.dir, path)))
+	return mkdirFS.MkDir(path.Join(sfs.dir, pathStr))
 }
 
 var (

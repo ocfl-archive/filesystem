@@ -130,12 +130,26 @@ func (zfs *zipFS) Open(name string) (fs.File, error) {
 	name = clearPath(name)
 	for _, f := range zfs.File {
 		if f.Name == name {
-			w, err := f.Open()
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to open file '%s'", name)
+			if f.Method == zip.Store {
+				w, err := f.OpenRaw()
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to open file in raw mode '%s'", name)
+				}
+				if rseeker, ok := w.(io.ReadSeeker); ok {
+					zfs.mutex.Lock()
+					return NewFile[io.ReadSeeker](f.FileInfo(), rseeker, zfs.mutex), nil
+				} else {
+					zfs.mutex.Lock()
+					return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex), nil
+				}
+			} else {
+				w, err := f.Open()
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to open file '%s'", name)
+				}
+				zfs.mutex.Lock()
+				return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex), nil
 			}
-			zfs.mutex.Lock()
-			return NewFile(f.FileInfo(), w, zfs.mutex), nil
 		}
 	}
 	return nil, fs.ErrNotExist
