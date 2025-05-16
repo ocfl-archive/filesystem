@@ -277,7 +277,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.step.sm/crypto v0.63.0 // indirect
-	go.ub.unibas.ch/cloud/minivault/v2 v2.0.20 // indirect
+	go.ub.unibas.ch/cloud/minivault/v2 v2.0.21 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
