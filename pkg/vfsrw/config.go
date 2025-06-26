@@ -40,14 +40,24 @@ type S3 struct {
 	DNSAddress       string
 }
 
+type MiniKVStore struct {
+	ResolverAddr            string          `toml:"resolveraddr"`
+	ResolverTimeout         config.Duration `toml:"resolvertimeout"`
+	ResolverNotFoundTimeout config.Duration `toml:"resolvernotfoundtimeout"`
+	Domain                  string          `toml:"domains"`
+	ClientTLS               *loader.Config  `toml:"clienttls"`
+	Dir                     string          `toml:"dir"`
+}
+
 type VFS struct {
-	Name     string  `toml:"name"`
-	Type     string  `toml:"type"`
-	ReadOnly bool    `toml:"readonly"`
-	S3       *S3     `toml:"s3,omitempty"`
-	OS       *OS     `toml:"os,omitempty"`
-	SFTP     *SFTP   `toml:"sftp,omitempty"`
-	Remote   *Remote `toml:"remote,omitempty"`
+	Name        string       `toml:"name"`
+	Type        string       `toml:"type"`
+	ReadOnly    bool         `toml:"readonly"`
+	S3          *S3          `toml:"s3,omitempty"`
+	OS          *OS          `toml:"os,omitempty"`
+	SFTP        *SFTP        `toml:"sftp,omitempty"`
+	Remote      *Remote      `toml:"remote,omitempty"`
+	MiniKVStore *MiniKVStore `toml:"minikvstore,omitempty"`
 }
 
 type Config map[string]*VFS

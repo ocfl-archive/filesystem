@@ -1,10 +1,13 @@
 package vfsrw
 
 import (
+	"crypto/tls"
 	"emperror.dev/errors"
 	"fmt"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
+	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -31,12 +34,27 @@ func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
 		_logger = logger.With().Str("fs", name).Logger()
 		logger = &_logger
 		switch strings.ToLower(cfg.Type) {
+		case "minikvstore":
+			if cfg.MiniKVStore == nil {
+				closeAll()
+				return nil, errors.Errorf("no minikvstore section for filesystem '%s'", cfg.Name)
+			}
+			mkvsFS, closers, err := vfs.newMiniKVStore(name, cfg.MiniKVStore, cfg.ReadOnly, logger)
+			if err != nil {
+				closeAll()
+				return nil, errors.Wrapf(err, "cannot create minikvstore in '%s'", cfg.Name)
+			}
+			toClose = append(toClose, closers...)
+			if closer, ok := mkvsFS.(io.Closer); ok {
+				toClose = append(toClose, closer)
+			}
+			vfs.fss[cfg.Name] = mkvsFS
 		case "os":
 			if cfg.OS == nil {
 				closeAll()
 				return nil, errors.Errorf("no os section for filesystem '%s'", cfg.Name)
 			}
-			xFS, err := newOS(name, cfg.OS, cfg.ReadOnly, logger)
+			xFS, err := vfs.newOS(name, cfg.OS, cfg.ReadOnly, logger)
 			if err != nil {
 				closeAll()
 				return nil, errors.Wrapf(err, "cannot create osfs in '%s'", cfg.Name)
@@ -50,7 +68,7 @@ func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
 				closeAll()
 				return nil, errors.Errorf("no sftp section for filesystem '%s'", cfg.Name)
 			}
-			xFS, err := newSFTP(name, cfg.SFTP, cfg.ReadOnly, logger)
+			xFS, err := vfs.newSFTP(name, cfg.SFTP, cfg.ReadOnly, logger)
 			if err != nil {
 				closeAll()
 				return nil, errors.Wrapf(err, "cannot create sftpfsrw in '%s'", cfg.Name)
@@ -64,7 +82,7 @@ func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
 				closeAll()
 				return nil, errors.Errorf("no s3 section for filesystem '%s'", cfg.Name)
 			}
-			xFS, err := newS3(name, cfg.S3, cfg.ReadOnly, logger)
+			xFS, err := vfs.newS3(name, cfg.S3, cfg.ReadOnly, logger)
 			if err != nil {
 				closeAll()
 				return nil, errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
@@ -78,7 +96,7 @@ func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
 				closeAll()
 				return nil, errors.Errorf("no Remote section for filesystem '%s'", cfg.Name)
 			}
-			xFS, err := newRemote(name, cfg.Remote, cfg.ReadOnly, logger)
+			xFS, err := vfs.newRemote(name, cfg.Remote, cfg.ReadOnly, logger)
 			if err != nil {
 				closeAll()
 				return nil, errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
@@ -93,7 +111,10 @@ func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
 }
 
 type vFSRW struct {
-	fss map[string]fs.FS
+	fss                      map[string]fs.FS
+	miniResolverClient       *resolver.MiniResolver
+	miniResolverClientTLS    *tls.Config
+	miniResolverClientLoader loader.Loader
 }
 
 func (vfs *vFSRW) Equal(fsys fs.FS) bool {
@@ -117,6 +138,16 @@ func (vfs *vFSRW) Equal(fsys fs.FS) bool {
 
 func (vfs *vFSRW) Close() error {
 	var errs = []error{}
+	if vfs.miniResolverClient != nil {
+		if err := vfs.miniResolverClient.Close(); err != nil {
+			errs = append(errs, errors.Wrap(err, "cannot close miniresolver client"))
+		}
+	}
+	if vfs.miniResolverClientLoader != nil {
+		if err := vfs.miniResolverClientLoader.Close(); err != nil {
+			errs = append(errs, errors.Wrap(err, "cannot close miniresolver loader"))
+		}
+	}
 	for _, fs := range vfs.fss {
 		if closer, ok := fs.(io.Closer); ok {
 			err := closer.Close()
