@@ -1,11 +1,11 @@
 package zipasfolder
 
 import (
+	"emperror.dev/errors"
 	"fmt"
 	"github.com/bluele/gcache"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	"github.com/pkg/errors"
 	"io"
 	"io/fs"
 	"path/filepath"

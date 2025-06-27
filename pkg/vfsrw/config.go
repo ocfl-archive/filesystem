@@ -44,7 +44,7 @@ type MiniKVStore struct {
 	ResolverAddr            string          `toml:"resolveraddr"`
 	ResolverTimeout         config.Duration `toml:"resolvertimeout"`
 	ResolverNotFoundTimeout config.Duration `toml:"resolvernotfoundtimeout"`
-	Domain                  string          `toml:"domains"`
+	Domain                  string          `toml:"domain"`
 	ClientTLS               *loader.Config  `toml:"clienttls"`
 	Dir                     string          `toml:"dir"`
 }

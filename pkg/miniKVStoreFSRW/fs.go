@@ -104,6 +104,9 @@ func (d *miniKVFSRW) Remove(filename string) error {
 	}
 	filename = path.Join(d.dir, filename)
 	bucket, dir := splitBucketDir(filename)
+	if bucket == "" {
+		return errors.New("cannot remove file without bucket")
+	}
 	resp, err := d.client.Delete(context.TODO(), &minikvstoreproto.KeyData{
 		Key:    dir,
 		Bucket: bucket,
@@ -127,12 +130,18 @@ func (d *miniKVFSRW) Rename(oldPath, newPath string) error {
 func (d *miniKVFSRW) Open(filename string) (fs.File, error) {
 	filename = path.Join(d.dir, filename)
 	bucket, dir := splitBucketDir(filename)
+	if bucket == "" {
+		return nil, errors.New("cannot open file without bucket")
+	}
 	resp, err := d.client.Get(context.TODO(), &minikvstoreproto.KeyData{
 		Key:    dir,
 		Bucket: bucket,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get '%s/%s'", bucket, dir)
+	}
+	if resp.GetIsDir() {
+		return nil, errors.Errorf("cannot open directory '%s/%s' as file", bucket, dir)
 	}
 	fp := &file{
 		data:   bytes.NewBuffer(resp.Value),
@@ -142,16 +151,63 @@ func (d *miniKVFSRW) Open(filename string) (fs.File, error) {
 	return fp, nil
 }
 
+func (d *miniKVFSRW) ReadDir(dirname string) ([]fs.DirEntry, error) {
+	dirname = path.Join(d.dir, dirname)
+	// TODO: optimize with cache
+	bucket, dir := splitBucketDir(dirname)
+	if bucket == "" {
+		return nil, errors.New("cannot stat file without bucket")
+	}
+	lc, err := d.client.List(context.TODO(), &minikvstoreproto.KeyData{
+		Key:    dir,
+		Bucket: bucket,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot list '%s/%s'", bucket, dir)
+	}
+	var entries []fs.DirEntry
+	for {
+		entry, err := lc.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "error receiving entry from list stream '%s/%s'", bucket, dir)
+		}
+		key := entry.GetKey()
+		entries = append(entries, fs.DirEntry(&fileInfo{
+			Name_:    path.Base(key.GetKey()),
+			Size_:    0,
+			Mode_:    fs.ModeDir | fs.ModePerm, // assuming directory with read/write permissions
+			ModTime_: "",
+			IsDir_:   entry.GetIsDir(),
+		}))
+	}
+	return entries, nil
+}
+
 func (d *miniKVFSRW) Stat(filename string) (fs.FileInfo, error) {
 	filename = path.Join(d.dir, filename)
 	// TODO: optimize with cache
 	bucket, dir := splitBucketDir(filename)
+	if bucket == "" {
+		return nil, errors.New("cannot stat file without bucket")
+	}
 	resp, err := d.client.Get(context.TODO(), &minikvstoreproto.KeyData{
 		Key:    dir,
 		Bucket: bucket,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get '%s/%s'", bucket, dir)
+	}
+	if resp.GetIsDir() {
+		return &fileInfo{
+			Name_:    filename,
+			Size_:    0,
+			Mode_:    fs.ModeDir | fs.ModePerm, // assuming directory with read/write permissions
+			ModTime_: "",
+			IsDir_:   true,
+		}, nil
 	}
 	fp := &file{
 		data:   bytes.NewBuffer(resp.Value),
@@ -191,8 +247,8 @@ var (
 	_ writefs.RenameFS   = &miniKVFSRW{}
 	_ writefs.RemoveFS   = &miniKVFSRW{}
 	_ writefs.FullpathFS = &miniKVFSRW{}
-	//_ fs.ReadDirFS        = &miniKVFSRW{}
-	_ fs.ReadFileFS = &miniKVFSRW{}
-	_ fs.StatFS     = &miniKVFSRW{}
-	_ fs.SubFS      = &miniKVFSRW{}
+	_ fs.ReadDirFS       = &miniKVFSRW{}
+	_ fs.ReadFileFS      = &miniKVFSRW{}
+	_ fs.StatFS          = &miniKVFSRW{}
+	_ fs.SubFS           = &miniKVFSRW{}
 )

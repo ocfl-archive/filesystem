@@ -13,6 +13,14 @@ type fileInfo struct {
 	IsDir_   bool        `json:"isDir"`
 }
 
+func (f *fileInfo) Type() fs.FileMode {
+	return f.Mode_.Type()
+}
+
+func (f *fileInfo) Info() (fs.FileInfo, error) {
+	return f, nil
+}
+
 func (f *fileInfo) Name() string {
 	return f.Name_
 }
@@ -39,3 +47,4 @@ func (f *fileInfo) Sys() any {
 }
 
 var _ fs.FileInfo = (*fileInfo)(nil)
+var _ fs.DirEntry = (*fileInfo)(nil)
