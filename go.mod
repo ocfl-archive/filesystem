@@ -1,6 +1,6 @@
 module github.com/je4/filesystem/v3
 
-go 1.24.4
+go 1.24.5
 
 require (
 	emperror.dev/errors v0.8.1

@@ -1,0 +1,33 @@
+[vfs.testcache]
+name = "testcache"
+type = "remote"
+[vfs.testcache.remote]
+#AccessKeyID = "AKIA312912CB2F7328D3"
+#SecretAccessKey = "D/0uo1Hga51vuqw9NBj7LDsOG2hIAyz5aYYmjJG0"
+#Endpoint = "vip-ecs-ub.storage.p.unibas.ch"
+#Region = ""
+#UseSSL = true
+#Debug = false
+#BaseUrl = ""
+#ZipAsFolderCache = 0
+#CAPEM = "ignore"
+address = "https://remotefs.ub-dd-test.k8s-001.unibas.ch/"
+basedir = ""
+[vfs.testcache.remote.clienttls]
+type = "minivault"
+interval = "1h"
+[vfs.testcache.remote.clienttls.minivault]
+baseurl = "https://minivault.ub-dd-test.k8s-001.unibas.ch/api/v1"
+parenttoken = "%%TESTCACHETOKEN%%"
+tokentype = "client_cert"
+tokenpolicies = ["remotefs"]
+tokeninterval = "48h"
+tokenttl = "96h"
+certtype = "client_cert"
+dnss = []
+uris = ["vfs://testcache"]
+ips = []
+certinterval = "24h"
+certttl = "48h"
+ca = ["certs/minivault.ca.pem"]
+usesystempool = false
