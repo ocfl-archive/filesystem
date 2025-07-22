@@ -13,6 +13,7 @@ type = "remote"
 #CAPEM = "ignore"
 address = "https://remotefs.ub-dd-test.k8s-001.unibas.ch/"
 basedir = ""
+ca = ["certs/minivault.ca.pem"]
 [vfs.testcache.remote.clienttls]
 type = "minivault"
 interval = "1h"

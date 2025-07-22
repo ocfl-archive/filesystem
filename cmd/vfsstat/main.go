@@ -44,7 +44,7 @@ func main() {
 	}()
 	fi, err := vfs.Stat(*path)
 	if err != nil {
-		logger.Panic().Err(err).Msgf("cannot stat path %s", *path)
+		logger.Fatal().Err(err).Msgf("cannot stat path %s", *path)
 	}
 	logger.Info().Str("path", *path).Msgf("vfs stat: %s (%d bytes, mode: %s, modtime: %s)",
 		fi.Name(), fi.Size(), fi.Mode(), fi.ModTime().Format("2006-01-02 15:04:05"))

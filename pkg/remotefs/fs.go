@@ -157,7 +157,7 @@ func (d *remoteFSRW) Stat(name string) (fs.FileInfo, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("cannot stat '%s': %d", url, resp.StatusCode)
+		return nil, errors.Errorf("cannot stat '%s': %s", url, resp.Status)
 	}
 	fi := &fileInfo{}
 	if err := json.NewDecoder(resp.Body).Decode(fi); err != nil {

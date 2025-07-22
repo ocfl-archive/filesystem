@@ -22,11 +22,18 @@ import (
 )
 
 func (vfs *vFSRW) newRemote(name string, conf *Remote, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
-	clientCert, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
+	clientTLS, clientLoader, err := loader.CreateClientLoader(conf.ClientTLS, logger)
 	if err != nil {
 		logger.Panic().Msgf("cannot create client loader: %v", err)
 	}
-	rFS, err := remotefs.NewFS(clientCert, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, conf.JWTKey.String(), readOnly, logger)
+	if len(conf.CAs) > 0 {
+		caPool := x509.NewCertPool()
+		for _, ca := range conf.CAs {
+			caPool.AddCert(ca.Certificate)
+		}
+		clientTLS.RootCAs = caPool
+	}
+	rFS, err := remotefs.NewFS(clientTLS, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, conf.JWTKey.String(), readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create new osfsrw")
 	}

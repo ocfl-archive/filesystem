@@ -2,6 +2,7 @@ package vfsrw
 
 import "github.com/je4/utils/v2/pkg/config"
 import "go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
+import certconfig "github.com/je4/trustutil/v2/pkg/config"
 
 type SFTP struct {
 	Address          config.EnvString
@@ -20,6 +21,7 @@ type OS struct {
 }
 
 type Remote struct {
+	CAs       []certconfig.Certificate `toml:"ca"`
 	Address   string
 	ClientTLS *loader.Config
 	BaseDir   string
