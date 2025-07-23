@@ -37,15 +37,6 @@ usesystempool = false
 name = "drivec"
 type = "remote"
 [vfs.drivec.remote]
-#AccessKeyID = "AKIA312912CB2F7328D3"
-#SecretAccessKey = "D/0uo1Hga51vuqw9NBj7LDsOG2hIAyz5aYYmjJG0"
-#Endpoint = "vip-ecs-ub.storage.p.unibas.ch"
-#Region = ""
-#UseSSL = true
-#Debug = false
-#BaseUrl = ""
-#ZipAsFolderCache = 0
-#CAPEM = "ignore"
 address = "https://localhost:8762"
 basedir = ""
 ca = ["certs/minivault.ca.pem", "certs/minivault-local.ca.pem"]
