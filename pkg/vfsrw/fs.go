@@ -2,16 +2,17 @@ package vfsrw
 
 import (
 	"crypto/tls"
-	"emperror.dev/errors"
 	"fmt"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
-	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
-	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
+
+	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
+	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 )
 
 func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
@@ -76,6 +77,20 @@ func (vfs *vFSRW) init(config Config) error {
 				toClose = append(toClose, closer)
 			}
 			vfs.fss[cfg.Name] = mkvsFS
+		case "web":
+			if cfg.Web == nil {
+				closeAll()
+				return errors.Errorf("no web section for filesystem '%s'", cfg.Name)
+			}
+			xFS, err := vfs.newWeb(name, cfg.Web, cfg.ReadOnly, logger)
+			if err != nil {
+				closeAll()
+				return errors.Wrapf(err, "cannot create webfs in '%s'", cfg.Name)
+			}
+			if closer, ok := xFS.(io.Closer); ok {
+				toClose = append(toClose, closer)
+			}
+			vfs.fss[cfg.Name] = xFS
 		case "os":
 			if cfg.OS == nil {
 				closeAll()

@@ -3,22 +3,24 @@ package vfsrw
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"io"
+	"io/fs"
+	"os"
+	"time"
+
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/miniKVStoreFSRW"
 	"github.com/je4/filesystem/v3/pkg/osfsrw"
 	"github.com/je4/filesystem/v3/pkg/remotefs"
 	"github.com/je4/filesystem/v3/pkg/s3fsrw"
 	"github.com/je4/filesystem/v3/pkg/sftpfsrw"
+	"github.com/je4/filesystem/v3/pkg/webFS"
 	"github.com/je4/filesystem/v3/pkg/zipasfolder"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"io"
-	"io/fs"
-	"os"
-	"time"
 )
 
 func (vfs *vFSRW) newRemote(name string, conf *Remote, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
@@ -38,6 +40,14 @@ func (vfs *vFSRW) newRemote(name string, conf *Remote, readOnly bool, logger zLo
 		return nil, errors.Wrapf(err, "cannot create new osfsrw")
 	}
 	return rFS, nil
+}
+
+func (vfs *vFSRW) newWeb(name string, cfg *Web, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
+	wFS, err := webFS.NewFS(cfg.BaseURI, cfg.Header, cfg.TLSInsecureSkipVerify, logger)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot create new webfs for '%s'", name)
+	}
+	return wFS, nil
 }
 
 func (vfs *vFSRW) newOS(name string, cfg *OS, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {

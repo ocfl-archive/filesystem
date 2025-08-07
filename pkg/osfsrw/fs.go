@@ -1,14 +1,15 @@
 package osfsrw
 
 import (
-	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
 func NewFS(dir string, readOnly bool, logger zLogger.ZLogger) (*osFSRW, error) {

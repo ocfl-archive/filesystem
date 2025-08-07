@@ -15,6 +15,11 @@ type SFTP struct {
 	ZipAsFolderCache uint
 }
 
+type Web struct {
+	BaseURI               string
+	Header                map[string][]string
+	TLSInsecureSkipVerify bool
+}
 type OS struct {
 	BaseDir          string
 	ZipAsFolderCache uint
@@ -60,6 +65,7 @@ type VFS struct {
 	SFTP        *SFTP        `toml:"sftp,omitempty"`
 	Remote      *Remote      `toml:"remote,omitempty"`
 	MiniKVStore *MiniKVStore `toml:"minikvstore,omitempty"`
+	Web         *Web         `toml:"web,omitempty"`
 }
 
 type Config map[string]*VFS
