@@ -52,7 +52,19 @@ func (d *webFSRW) Equal(fsys fs.FS) bool {
 }
 
 func (d *webFSRW) buildURL(name string) string {
-	name = url.QueryEscape(path.Join(d.basename, path.Clean(filepath.ToSlash(name))))
+	parts := strings.Split(path.Clean(filepath.ToSlash(name)), "/")
+	name = d.basename
+	for _, part := range parts {
+		unescaped, err := url.PathUnescape(part)
+		if err != nil {
+			d.logger.Error().Err(err).Str("name", name).Str("part", part).Msg("failed to unescape path")
+		}
+		name, err = url.JoinPath(name, url.PathEscape(unescaped))
+		if err != nil {
+			d.logger.Error().Err(err).Str("name", name).Msg("failed to build URL")
+			return "INVALID_URL"
+		}
+	}
 	urlStr := strings.ReplaceAll(d.baseuri, "%%PATH%%", name)
 	return urlStr
 }
@@ -71,7 +83,11 @@ func (d *webFSRW) query(urlStr string) (*http.Response, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create request for '%s'", urlStr)
 	}
-	req.Header = d.header
+	for k, vs := range d.header {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
 	if d.tlsInsecureSkipVerify {
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
