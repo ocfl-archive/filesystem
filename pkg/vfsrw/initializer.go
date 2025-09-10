@@ -35,6 +35,9 @@ func (vfs *vFSRW) newRemote(name string, conf *Remote, readOnly bool, logger zLo
 		}
 		clientTLS.RootCAs = caPool
 	}
+	if conf.InsecureSkipVerify {
+		clientTLS.InsecureSkipVerify = true
+	}
 	rFS, err := remotefs.NewFS(clientTLS, conf.Address, conf.BaseDir, name, []io.Closer{clientLoader}, conf.JWTKey.String(), readOnly, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create new osfsrw")

@@ -2,17 +2,18 @@ package remotefs
 
 import (
 	"crypto/tls"
-	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	"io"
 	"io/fs"
 	"net/http"
 	"path/filepath"
 	"time"
+
+	"emperror.dev/errors"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
 // todo: add jwt bearer token
@@ -125,23 +126,40 @@ func (d *remoteFSRW) Rename(oldPath, newPath string) error {
 	return errors.Errorf("rename not supported for remoteFSRW")
 }
 
+var errNoKey = errors.New("no key available")
+
+func (d *remoteFSRW) createToken(name string) (string, error) {
+	if d.jwtKey == "" {
+		return "", errNoKey
+	}
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS512,
+		jwt.RegisteredClaims{
+			// A usual scenario is to set the expiration time relative to the current time
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "mediaservermain",
+			Subject:   "vfs." + d.vfs,
+		})
+	tokenSigned, err := token.SignedString([]byte(d.jwtKey))
+	if err != nil {
+		return "", errors.Wrapf(err, "cannot sign token")
+	}
+	return tokenSigned, nil
+}
+
 func (d *remoteFSRW) Open(name string) (fs.File, error) {
 	url := fmt.Sprintf("%s/%s/%s", d.addr, d.vfs, name)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot create stat request for '%s'", url)
-	}
-	resp, err := d.client.Do(req)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot stat '%s'", url)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("cannot stat '%s': %d", url, resp.StatusCode)
+	tokenSigned, err := d.createToken(name)
+	if err != nil && !errors.Is(err, errNoKey) {
+		return nil, errors.Wrapf(err, "cannot create token")
 	}
 	return &file{
-		d:    d,
-		name: name,
-		rc:   resp.Body,
+		url:   url,
+		d:     d,
+		name:  name,
+		token: tokenSigned,
 	}, nil
 }
 
@@ -150,6 +168,13 @@ func (d *remoteFSRW) Stat(name string) (fs.FileInfo, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create stat request for '%s'", url)
+	}
+	if tokenSigned, err := d.createToken(name); err != nil {
+		if !errors.Is(err, errNoKey) {
+			return nil, errors.Wrapf(err, "cannot create token")
+		}
+	} else {
+		req.Header.Add("Authorization", "Bearer "+tokenSigned)
 	}
 	resp, err := d.client.Do(req)
 	if err != nil {
@@ -178,6 +203,13 @@ func (d *remoteFSRW) Create(path string) (writefs.FileWrite, error) {
 	}
 	done := make(chan error)
 	go func() {
+		if tokenSigned, err := d.createToken(path); err != nil {
+			if !errors.Is(err, errNoKey) {
+				done <- errors.Wrapf(err, "cannot create token")
+			}
+		} else {
+			req.Header.Add("Authorization", "Bearer "+tokenSigned)
+		}
 		resp, err := d.client.Do(req)
 		if err != nil {
 			done <- errors.Wrapf(err, "cannot create '%s'", url)
