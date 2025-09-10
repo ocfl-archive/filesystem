@@ -1,12 +1,13 @@
 package mountFS
 
 import (
-	"emperror.dev/errors"
 	"io"
 	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"emperror.dev/errors"
 )
 
 func NewMountFS(base fs.FS) *MountFS {
