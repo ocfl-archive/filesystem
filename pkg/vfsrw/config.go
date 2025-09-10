@@ -16,9 +16,9 @@ type SFTP struct {
 }
 
 type Web struct {
-	BaseURI               string
-	Header                map[string][]string
-	TLSInsecureSkipVerify bool
+	BaseURI               string              `toml:"baseuri"`
+	Header                map[string][]string `toml:"header"`
+	TLSInsecureSkipVerify bool                `toml:"tls_insecure_skip_verify"`
 }
 type OS struct {
 	BaseDir          string
@@ -26,11 +26,12 @@ type OS struct {
 }
 
 type Remote struct {
-	CAs       []certconfig.Certificate `toml:"ca"`
-	Address   string
-	ClientTLS *loader.Config
-	BaseDir   string
-	JWTKey    config.EnvString
+	CAs                []certconfig.Certificate `toml:"ca"`
+	Address            string
+	ClientTLS          *loader.Config
+	BaseDir            string
+	JWTKey             config.EnvString
+	InsecureSkipVerify bool
 }
 
 type S3 struct {
