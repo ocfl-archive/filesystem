@@ -1,10 +1,12 @@
 package writefs
 
 import (
-	"emperror.dev/errors"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
+
+	"emperror.dev/errors"
 )
 
 var ErrNotImplemented = errors.NewPlain("not implemented")
@@ -44,7 +46,7 @@ func Rename(fsys fs.FS, oldPath, newPath string) error {
 		return errors.Wrap(ErrNotImplemented, "Cannot Rename: Copy")
 	}
 
-	if _, err := Copy(fsys, oldPath, newPath); err != nil {
+	if _, err := Copy(fsys, oldPath, fsys, newPath); err != nil {
 		return errors.Wrapf(err, "cannot copy '%s' to '%s'", oldPath, newPath)
 	}
 	if err := Remove(fsys, oldPath); err != nil {
@@ -155,11 +157,46 @@ func _copy(fsys fs.FS, src, dst string) (int64, error) {
 	return num, nil
 }
 
-func Copy(fsys fs.FS, src, dst string) (int64, error) {
-	if _fsys, ok := fsys.(CopyFS); ok {
-		return _fsys.Copy(dst, src)
+func Copy(srcFS fs.FS, src string, dstFS fs.FS, dst string) (int64, error) {
+	if Equal(srcFS, dstFS) {
+		if _fsys, ok := srcFS.(CopyFS); ok {
+			return _fsys.Copy(dst, src)
+		}
+		return _copy(srcFS, src, dst)
+	} else {
+		var srcFP io.ReadCloser
+		var dstFP io.WriteCloser
+		var err error
+		if srcFS == nil {
+			srcFP, err = os.Open(src)
+			if err != nil {
+				return 0, errors.Wrapf(err, "cannot open source '%s'", src)
+			}
+		} else {
+			srcFP, err = srcFS.Open(src)
+			if err != nil {
+				return 0, errors.Wrapf(err, "cannot open source '%s'", src)
+			}
+		}
+		defer srcFP.Close()
+		if dstFS == nil {
+			dstFP, err = os.Create(dst)
+			if err != nil {
+				return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)
+			}
+		} else {
+			dstFP, err = Create(dstFS, dst)
+			if err != nil {
+				return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)
+			}
+		}
+		defer dstFP.Close()
+		n, err := io.Copy(dstFP, srcFP)
+		if err != nil {
+			return 0, errors.Wrapf(err, "cannot copy '%s' to '%s'", src, dst)
+		}
+		return n, nil
 	}
-	return _copy(fsys, src, dst)
 }
 
 func Join(fsys fs.FS, elems ...string) string {
