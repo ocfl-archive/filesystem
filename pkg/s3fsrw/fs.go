@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"emperror.dev/errors"
 	"fmt"
+	"io"
+	"io/fs"
+	"net"
+	"net/http"
+
+	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"golang.org/x/exp/slices"
-	"io"
-	"io/fs"
-	"net"
-	"net/http"
 )
 
 func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug bool, tlsConfig *tls.Config, dnsNetwork, dnsAddress string, readOnly bool, logger zLogger.ZLogger) (*s3FSRW, error) {

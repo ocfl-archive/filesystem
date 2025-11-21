@@ -1,10 +1,11 @@
 package zipfs
 
 import (
-	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
 	"io"
 	"io/fs"
+
+	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
 )
 
 func NewFile[E io.Reader](info fs.FileInfo, rc E, mutex *writefs.Mutex) fs.File {

@@ -1,17 +1,18 @@
 package zipasfolder
 
 import (
-	"emperror.dev/errors"
 	"fmt"
-	"github.com/bluele/gcache"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"emperror.dev/errors"
+	"github.com/bluele/gcache"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only

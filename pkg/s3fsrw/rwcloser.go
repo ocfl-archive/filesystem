@@ -1,11 +1,12 @@
 package s3fsrw
 
 import (
+	"io"
+	"sync/atomic"
+
 	"emperror.dev/errors"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/minio/minio-go/v7"
-	"io"
-	"sync/atomic"
 )
 
 func NewUploadInfo(ui *minio.UploadInfo, err error) *uploadInfo {

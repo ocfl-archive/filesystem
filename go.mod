@@ -16,7 +16,6 @@ require (
 	go.ub.unibas.ch/cloud/certloader/v2 v2.0.24
 	go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4
 	go.ub.unibas.ch/cloud/minikvstore v1.0.2
-	go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.52
 	go.ub.unibas.ch/cloud/miniresolverclient v1.0.0
 	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6

@@ -1,12 +1,13 @@
 package zipfsrw
 
 import (
-	"github.com/je4/filesystem/v3/pkg/osfsrw"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/rs/zerolog"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/je4/filesystem/v3/pkg/osfsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/rs/zerolog"
 )
 
 var testTmpFile = "file://" + filepath.ToSlash(filepath.Join(os.TempDir(), tempFileName("zipfsrwfactorytest_", ".zip")))

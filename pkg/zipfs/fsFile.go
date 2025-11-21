@@ -1,12 +1,13 @@
 package zipfs
 
 import (
-	"emperror.dev/errors"
 	"fmt"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	"io"
 	"io/fs"
+
+	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
 type OpenRawZipCloserFS interface {

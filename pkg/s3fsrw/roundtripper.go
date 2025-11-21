@@ -2,9 +2,10 @@ package s3fsrw
 
 import (
 	"fmt"
-	"github.com/je4/utils/v2/pkg/zLogger"
 	"net/http"
 	"time"
+
+	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
 /*

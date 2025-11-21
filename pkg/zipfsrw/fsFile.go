@@ -2,13 +2,14 @@ package zipfsrw
 
 import (
 	"bufio"
-	"emperror.dev/errors"
 	"fmt"
+	"io"
+	"io/fs"
+
+	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/filesystem/v3/pkg/zipfs"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	"io"
-	"io/fs"
 )
 
 // NewZipFSRW creates a new ReadWriteFS

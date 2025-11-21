@@ -3,19 +3,20 @@ package zipfsrw
 import (
 	"bufio"
 	"bytes"
-	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/fs"
+	"strings"
+	"time"
+
+	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/encrypt"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/tink-crypto/tink-go/v2/core/registry"
 	"github.com/tink-crypto/tink-go/v2/keyset"
-	"io"
-	"io/fs"
-	"strings"
-	"time"
 )
 
 // NewFSFileEncryptedChecksums creates a new ReadWriteFS

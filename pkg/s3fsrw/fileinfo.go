@@ -1,10 +1,11 @@
 package s3fsrw
 
 import (
-	"github.com/minio/minio-go/v7"
 	"io/fs"
 	"path/filepath"
 	"time"
+
+	"github.com/minio/minio-go/v7"
 )
 
 func NewFileInfo(o *minio.ObjectInfo) fs.FileInfo {

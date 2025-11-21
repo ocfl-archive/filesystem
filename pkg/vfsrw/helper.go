@@ -1,8 +1,9 @@
 package vfsrw
 
 import (
-	"emperror.dev/errors"
 	"regexp"
+
+	"emperror.dev/errors"
 )
 
 var matchPathRegexp = regexp.MustCompile(`^vfs://?([^/]+)/(.*)$`)

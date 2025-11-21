@@ -1,11 +1,12 @@
 package zipasfolder
 
 import (
+	"io"
+	"io/fs"
+
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/zipfs"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	"io"
-	"io/fs"
 )
 
 func NewZipFSCloser(zipFile fs.File, filename string, logger zLogger.ZLogger) (fs.FS, error) {

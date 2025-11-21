@@ -3,11 +3,12 @@ package miniKVStoreFSRW
 import (
 	"bytes"
 	"context"
+	"io/fs"
+
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	genericproto "go.ub.unibas.ch/cloud/genericproto/v2/pkg/generic/proto"
 	"go.ub.unibas.ch/cloud/minikvstore/pkg/minikvstoreproto"
-	"io/fs"
 )
 
 type file struct {

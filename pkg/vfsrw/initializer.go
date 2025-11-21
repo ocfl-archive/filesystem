@@ -18,7 +18,7 @@ import (
 	"github.com/je4/filesystem/v3/pkg/zipasfolder"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
-	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
+	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )

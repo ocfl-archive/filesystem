@@ -1,10 +1,11 @@
 package s3fsrw
 
 import (
+	"io/fs"
+
 	"emperror.dev/errors"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/minio/minio-go/v7"
-	"io/fs"
 )
 
 func NewROFile(o *minio.Object, debugInfo string, logger zLogger.ZWrapper) *ROFile {

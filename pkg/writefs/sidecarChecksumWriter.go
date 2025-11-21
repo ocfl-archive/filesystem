@@ -1,9 +1,10 @@
 package writefs
 
 import (
+	"io"
+
 	"emperror.dev/errors"
 	"github.com/je4/utils/v2/pkg/checksum"
-	"io"
 )
 
 func NewSidecarChecksumWriter(w io.Writer, sidecars map[checksum.DigestAlgorithm]io.WriteCloser) (io.WriteCloser, error) {

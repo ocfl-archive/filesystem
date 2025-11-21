@@ -1,10 +1,11 @@
 package writefs
 
 import (
-	"emperror.dev/errors"
-	"golang.org/x/exp/slices"
 	"io/fs"
 	"regexp"
+
+	"emperror.dev/errors"
+	"golang.org/x/exp/slices"
 )
 
 type levelFS uint8

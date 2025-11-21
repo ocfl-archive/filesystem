@@ -107,8 +107,6 @@ go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4 h1:I5s63ZEyWLg5w4Q6oUUnpOzSzQGSpoMN
 go.ub.unibas.ch/cloud/genericproto/v2 v2.0.4/go.mod h1:xvjwyT7AW8q2MEd1hB8UKB7m1HXMwLRk9Er24sefi0U=
 go.ub.unibas.ch/cloud/minikvstore v1.0.2 h1:05fWnNOOOMjnNxKSa5084RZyxabIFCujMnKadBUkhiA=
 go.ub.unibas.ch/cloud/minikvstore v1.0.2/go.mod h1:CRCqk0bcFQ27eZpYQXEkcKWLGGqan817FQwdad8DwBU=
-go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.52 h1:5rMRUUir0Qpblb5XhCqo+VntZ/XR1ZPweoD1bIugoIg=
-go.ub.unibas.ch/cloud/miniresolver/v2 v2.0.52/go.mod h1:P1B6D5vYQy763T2mNp/5rafwNIpIbA9KqpyHD+PD1HE=
 go.ub.unibas.ch/cloud/miniresolverclient v1.0.0 h1:a8zMc/XYm32jDkZaoxqmgANw+y7sU7UO00jzsYn2XOs=
 go.ub.unibas.ch/cloud/miniresolverclient v1.0.0/go.mod h1:58dqXJmyRjxy8LtPf5SosQhaAup9tALnEDcPjks+C1E=
 go.ub.unibas.ch/cloud/minivaultclient v1.0.0 h1:ee4cCr7IZ7Q7vQ0mnWDFSdozQZ1rIosswJ1qCMbUOng=

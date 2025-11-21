@@ -2,14 +2,15 @@ package main
 
 import (
 	"flag"
+	"io/fs"
+	"os"
+	"path/filepath"
+
 	"github.com/je4/filesystem/v3/configs"
 	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"io/fs"
-	"os"
-	"path/filepath"
 )
 
 var configfile = flag.String("config", "", "location of toml configuration file")
