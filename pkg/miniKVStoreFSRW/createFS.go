@@ -3,7 +3,7 @@ package miniKVStoreFSRW
 import (
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
+	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 	"io"
 	"io/fs"
 )

@@ -3,17 +3,18 @@ package miniKVStoreFSRW
 import (
 	"bytes"
 	"context"
-	"emperror.dev/errors"
 	"fmt"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
-	genericproto "go.ub.unibas.ch/cloud/genericproto/v2/pkg/generic/proto"
-	"go.ub.unibas.ch/cloud/minikvstore/pkg/minikvstoreproto"
-	"go.ub.unibas.ch/cloud/miniresolver/v2/pkg/resolver"
 	"io"
 	"io/fs"
 	"path"
 	"strings"
+
+	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
+	genericproto "go.ub.unibas.ch/cloud/genericproto/v2/pkg/generic/proto"
+	"go.ub.unibas.ch/cloud/minikvstore/pkg/minikvstoreproto"
+	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 )
 
 func splitBucketDir(fullpath string) (bucket, dir string) {

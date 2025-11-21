@@ -1,16 +1,18 @@
 package sftpfsrw
 
 import (
-	"emperror.dev/errors"
 	"fmt"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/utils/v2/pkg/zLogger"
-	"golang.org/x/crypto/ssh"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/zLogger"
+	"golang.org/x/crypto/ssh"
 )
 
 func NewFS(addr string, config *ssh.ClientConfig, baseDir string, numSessions uint, readOnly bool, logger zLogger.ZLogger) (*sftpFSRW, error) {
@@ -73,7 +75,14 @@ func (sftpFS *sftpFSRW) Remove(path string) error {
 	}
 	defer sftpFS.closeSession(sess)
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
-	return sess.Remove(fullpath)
+	if err := sess.Remove(fullpath); err != nil {
+		perr := &fs.PathError{}
+		if errors.As(err, perr) && strings.Contains(perr.Err.Error(), "file does not exist") {
+			return errors.Append(fs.ErrNotExist, err)
+		}
+		return errors.Wrapf(err, "cannot remove file %s", fullpath)
+	}
+	return nil
 }
 
 func (sftpFS *sftpFSRW) Rename(oldPath, newPath string) error {
