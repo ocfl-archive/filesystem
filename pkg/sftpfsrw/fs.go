@@ -76,9 +76,11 @@ func (sftpFS *sftpFSRW) Remove(path string) error {
 	defer sftpFS.closeSession(sess)
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
 	if err := sess.Remove(fullpath); err != nil {
-		perr := &fs.PathError{}
-		if errors.As(err, perr) && strings.Contains(perr.Err.Error(), "file does not exist") {
-			return errors.Append(fs.ErrNotExist, err)
+		var perr *fs.PathError
+		if errors.As(err, &perr) {
+			if strings.Contains(perr.Err.Error(), "file does not exist") {
+				return errors.Append(fs.ErrNotExist, err)
+			}
 		}
 		return errors.Wrapf(err, "cannot remove file %s", fullpath)
 	}
