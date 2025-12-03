@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -330,13 +331,15 @@ func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
 }
 
 func (vfs *vFSRW) Join(fsys fs.FS, elems ...string) string {
-	if !strings.HasPrefix(elems[0], "vfs://") {
+	if !strings.HasPrefix(elems[0], "vfs:/") {
 		return filepath.ToSlash(filepath.Join(elems...))
 	}
 	newElems := make([]string, len(elems))
-	newElems[0] = elems[0][6:]
-	copy(newElems[1:], elems[1:])
-	return "vfs://" + filepath.ToSlash(filepath.Join(newElems...))
+	newElems[0] = filepath.ToSlash(strings.TrimPrefix(elems[0][5:], "/"))
+	for i, elem := range elems[1:] {
+		newElems[i+1] = filepath.ToSlash(elem)
+	}
+	return "vfs://" + path.Join(newElems...)
 }
 
 func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
