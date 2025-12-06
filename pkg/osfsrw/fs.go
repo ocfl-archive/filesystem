@@ -151,7 +151,7 @@ func (d *osFSRW) MkDir(path string) error {
 	if d.readOnly {
 		return errors.New("read only filesystem")
 	}
-	return errors.WithStack(os.Mkdir(filepath.Join(d.dir, path), 0777))
+	return errors.WithStack(os.MkdirAll(filepath.Join(d.dir, path), 0777))
 }
 
 func (d *osFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
