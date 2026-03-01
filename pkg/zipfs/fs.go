@@ -129,8 +129,11 @@ func (zfs *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
 
 func (zfs *zipFS) Open(name string) (fs.File, error) {
 	name = clearPath(name)
+	namePrefix := name + "/"
 	for _, f := range zfs.File {
-		if f.Name == name {
+		if strings.HasPrefix(f.Name, namePrefix) {
+			return NewDirFile(zfs, name), nil
+		} else if f.Name == name {
 			if f.Method == zip.Store {
 				w, err := f.OpenRaw()
 				if err != nil {
@@ -186,4 +189,5 @@ var (
 	_ fs.ReadDirFS        = (*zipFS)(nil)
 	_ fs.ReadFileFS       = (*zipFS)(nil)
 	_ fs.StatFS           = (*zipFS)(nil)
+	//_ fs.SubFS            = (*zipFS)(nil)
 )
