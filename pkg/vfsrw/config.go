@@ -5,14 +5,14 @@ import "go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 import certconfig "github.com/je4/trustutil/v2/pkg/config"
 
 type SFTP struct {
-	Address          config.EnvString
-	KnownHosts       []string
-	BaseDir          string
-	Sessions         uint
-	User             config.EnvString
-	Password         config.EnvString
-	PrivateKey       []string
-	ZipAsFolderCache uint
+	Address          config.EnvString `toml:"address"`
+	KnownHosts       []string         `toml:"knownhosts"`
+	BaseDir          string           `toml:"basedir"`
+	Sessions         uint             `toml:"sessions"`
+	User             config.EnvString `toml:"user"`
+	Password         config.EnvString `toml:"password"`
+	PrivateKey       []string         `toml:"privatekey"`
+	ZipAsFolderCache uint             `toml:"zipasfoldercache"`
 }
 
 type Web struct {
@@ -21,31 +21,31 @@ type Web struct {
 	TLSInsecureSkipVerify bool                `toml:"tls_insecure_skip_verify"`
 }
 type OS struct {
-	BaseDir          string
-	ZipAsFolderCache uint
+	BaseDir          string `toml:"basedir"`
+	ZipAsFolderCache uint   `toml:"zipasfoldercache"`
 }
 
 type Remote struct {
 	CAs                []certconfig.Certificate `toml:"ca"`
-	Address            string
-	ClientTLS          *loader.Config
-	BaseDir            string
-	JWTKey             config.EnvString
-	InsecureSkipVerify bool
+	Address            string                   `toml:"address"`
+	ClientTLS          *loader.Config           `toml:"clienttls"`
+	BaseDir            string                   `toml:"basedir"`
+	JWTKey             config.EnvString         `toml:"jwtkey"`
+	InsecureSkipVerify bool                     `toml:"insecureskipverify"`
 }
 
 type S3 struct {
-	AccessKeyID      config.EnvString
-	SecretAccessKey  config.EnvString
-	Endpoint         config.EnvString
-	Region           config.EnvString
-	UseSSL           bool
-	Debug            bool
-	CAPEM            string
-	BaseUrl          string
-	ZipAsFolderCache uint
-	DNSNetwork       string
-	DNSAddress       string
+	AccessKeyID      config.EnvString `toml:"accesskeyid"`
+	SecretAccessKey  config.EnvString `toml:"secretaccesskey"`
+	Endpoint         config.EnvString `toml:"endpoint"`
+	Region           config.EnvString `toml:"region"`
+	UseSSL           bool             `toml:"usessl"`
+	Debug            bool             `toml:"debug"`
+	CAPEM            string           `toml:"capem"`
+	BaseUrl          string           `toml:"baseurl"`
+	ZipAsFolderCache uint             `toml:"zipasfoldercache"`
+	DNSNetwork       string           `toml:"dnsnetwork"`
+	DNSAddress       string           `toml:"dnsaddress"`
 }
 
 type MiniKVStore struct {
