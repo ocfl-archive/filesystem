@@ -60,8 +60,7 @@ func (vfs *vFSRW) init(config Config) error {
 	}
 
 	for name, cfg := range config {
-		_logger := vfs.logger.With().Str("fs", name).Logger()
-		logger := &_logger
+		logger := new(vfs.logger.With().Str("fs", name).Logger())
 		switch strings.ToLower(cfg.Type) {
 		case "minikvstore":
 			if cfg.MiniKVStore == nil {
@@ -159,6 +158,10 @@ type vFSRW struct {
 	miniResolverClientTLS    *tls.Config
 	miniResolverClientLoader loader.Loader
 	logger                   zLogger.ZLogger
+}
+
+func (vfs *vFSRW) AddFS(name string, fsys fs.FS) {
+	vfs.fss[name] = fsys
 }
 
 func (vfs *vFSRW) Equal(fsys fs.FS) bool {
