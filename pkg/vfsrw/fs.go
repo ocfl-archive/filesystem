@@ -60,7 +60,8 @@ func (vfs *vFSRW) init(config Config) error {
 	}
 
 	for name, cfg := range config {
-		logger := new(vfs.logger.With().Str("fs", name).Logger())
+		_logger := vfs.logger.With().Str("fs", name).Logger()
+		logger := &_logger
 		switch strings.ToLower(cfg.Type) {
 		case "minikvstore":
 			if cfg.MiniKVStore == nil {
