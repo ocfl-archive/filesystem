@@ -19,7 +19,7 @@ func NewFS(baseuri string, header map[string][]string, tlsInsecureSkipVerify boo
 	logger = &_logger
 
 	httpHeader := http.Header{}
-	if header != nil {
+	if header == nil {
 		header = map[string][]string{}
 	}
 	if _, ok := header["User-Agent"]; !ok {
