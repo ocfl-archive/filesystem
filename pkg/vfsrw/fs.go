@@ -148,6 +148,20 @@ func (vfs *vFSRW) init(config Config) error {
 				toClose = append(toClose, closer)
 			}
 			vfs.fss[cfg.Name] = xFS
+		case "memfs":
+			if cfg.MemFS == nil {
+				closeAll()
+				return errors.Errorf("no memfs section for filesystem '%s'", cfg.Name)
+			}
+			xFS, err := vfs.newMemFS(name, cfg.MemFS, cfg.ReadOnly, logger)
+			if err != nil {
+				closeAll()
+				return errors.Wrapf(err, "cannot create memfs in '%s'", cfg.Name)
+			}
+			if closer, ok := xFS.(io.Closer); ok {
+				toClose = append(toClose, closer)
+			}
+			vfs.fss[cfg.Name] = xFS
 		}
 	}
 	return nil
@@ -365,7 +379,7 @@ func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 	}
 	if writefs.Equal(srcFS, dstFS) {
 		if copyFS, ok := srcFS.(writefs.CopyFS); ok {
-			num, err := copyFS.Copy(srcPath, dstPath)
+			num, err := copyFS.Copy(dstPath, srcPath)
 			return num, errors.Wrapf(err, "cannot copy '%s' -> '%s' on '%s'", src, dst, srcName)
 		}
 	}

@@ -57,6 +57,9 @@ type MiniKVStore struct {
 	Dir                     string          `toml:"dir"`
 }
 
+type MemFS struct {
+}
+
 type VFS struct {
 	Name        string       `toml:"name"`
 	Type        string       `toml:"type"`
@@ -67,6 +70,7 @@ type VFS struct {
 	Remote      *Remote      `toml:"remote,omitempty"`
 	MiniKVStore *MiniKVStore `toml:"minikvstore,omitempty"`
 	Web         *Web         `toml:"web,omitempty"`
+	MemFS       *MemFS       `toml:"memfs,omitempty"`
 }
 
 type Config map[string]*VFS

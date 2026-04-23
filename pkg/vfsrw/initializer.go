@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/memFS"
 	"github.com/je4/filesystem/v3/pkg/miniKVStoreFSRW"
 	"github.com/je4/filesystem/v3/pkg/osfsrw"
 	"github.com/je4/filesystem/v3/pkg/remotefs"
@@ -200,4 +201,8 @@ func (vfs *vFSRW) newS3(name string, cfg *S3, readOnly bool, logger zLogger.ZLog
 		return nil, errors.Wrapf(err, "cannot create zipasfolder over '%v'", zFS)
 	}
 	return zFS, nil
+}
+
+func (vfs *vFSRW) newMemFS(name string, cfg *MemFS, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
+	return memFS.NewFS(logger)
 }
