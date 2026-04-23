@@ -36,7 +36,7 @@ type zipFSRW struct {
 	readOnly      bool
 }
 
-func (zfsrw *zipFSRW) Copy(dst, src string) (int64, error) {
+func (zfsrw *zipFSRW) Copy(src, dst string) (int64, error) {
 	if zfsrw.readOnly {
 		return 0, errors.New("read only zip filesystem")
 	}

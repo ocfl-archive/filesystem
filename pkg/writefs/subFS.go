@@ -19,11 +19,11 @@ func Sub(fsys fs.FS, dir string) (fs.FS, error) {
 	}, nil
 }
 
-func (sfs *subFS) Copy(dst, src string) (int64, error) {
+func (sfs *subFS) Copy(src, dst string) (int64, error) {
 	if copyFS, ok := sfs.fsys.(CopyFS); ok {
-		return copyFS.Copy(path.Join(sfs.dir, dst), path.Join(sfs.dir, src))
+		return copyFS.Copy(path.Join(sfs.dir, src), path.Join(sfs.dir, dst))
 	}
-	return _copy(sfs.fsys, path.Join(sfs.dir, dst), path.Join(sfs.dir, src))
+	return _copy(sfs.fsys, path.Join(sfs.dir, src), path.Join(sfs.dir, dst))
 }
 
 func (sfs *subFS) Append(pathStr string) (FileWrite, error) {

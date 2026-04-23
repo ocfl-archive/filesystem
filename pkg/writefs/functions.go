@@ -160,7 +160,7 @@ func _copy(fsys fs.FS, src, dst string) (int64, error) {
 func Copy(srcFS fs.FS, src string, dstFS fs.FS, dst string) (int64, error) {
 	if Equal(srcFS, dstFS) {
 		if _fsys, ok := srcFS.(CopyFS); ok {
-			return _fsys.Copy(dst, src)
+			return _fsys.Copy(src, dst)
 		}
 		return _copy(srcFS, src, dst)
 	} else {

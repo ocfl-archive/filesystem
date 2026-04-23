@@ -28,7 +28,7 @@ func TestVFS_MemFS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
-	defer vfs.Close()
+	defer writefs.Close(vfs)
 
 	testData := []byte("vfs memfs test data")
 	testFile := "vfs://testmem/test.txt"
@@ -49,7 +49,7 @@ func TestVFS_MemFS(t *testing.T) {
 	}
 	f.Close()
 
-	// Read via fs.ReadFile (vfs implements ReadFileFS)
+	// Read via fs.ReadFile
 	data, err := fs.ReadFile(vfs, testFile)
 	if err != nil {
 		t.Fatalf("failed to read from vfs: %v", err)
@@ -73,7 +73,7 @@ func TestVFS_MemFS(t *testing.T) {
 		t.Fatalf("failed to WriteFile: %v", err)
 	}
 
-	// Read back testFile2
+	// Read back testFile2 via fs.ReadFile
 	data2, err := fs.ReadFile(vfs, testFile2)
 	if err != nil {
 		t.Fatalf("failed to read testFile2: %v", err)
@@ -89,7 +89,7 @@ func TestVFS_MemFS(t *testing.T) {
 		t.Fatalf("failed to copy file via writefs.Copy: %v", err)
 	}
 
-	// Read copied file
+	// Read copied file via fs.ReadFile
 	data, err = fs.ReadFile(vfs, copyFile)
 	if err != nil {
 		t.Fatalf("failed to read copied file: %v", err)

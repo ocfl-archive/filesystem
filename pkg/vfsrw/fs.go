@@ -379,7 +379,10 @@ func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 	}
 	if writefs.Equal(srcFS, dstFS) {
 		if copyFS, ok := srcFS.(writefs.CopyFS); ok {
-			num, err := copyFS.Copy(dstPath, srcPath)
+			num, err := copyFS.Copy(srcPath, dstPath)
+			if err == nil {
+				return num, nil
+			}
 			return num, errors.Wrapf(err, "cannot copy '%s' -> '%s' on '%s'", src, dst, srcName)
 		}
 	}

@@ -52,7 +52,7 @@ type osFSRW struct {
 	readOnly bool
 }
 
-func (d *osFSRW) Copy(dst, src string) (int64, error) {
+func (d *osFSRW) Copy(src, dst string) (int64, error) {
 	if d.readOnly {
 		return 0, errors.New("read only filesystem")
 	}

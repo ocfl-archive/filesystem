@@ -31,7 +31,7 @@ type WriteFileFS interface {
 }
 
 type CopyFS interface {
-	Copy(dst, src string) (int64, error)
+	Copy(src, dst string) (int64, error)
 }
 
 type FullpathFS interface {

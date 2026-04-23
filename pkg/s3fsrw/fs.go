@@ -172,9 +172,9 @@ func (s3FS *s3FSRW) ReadFile(path string) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
-func (s3FS *s3FSRW) Copy(dst, src string) (int64, error) {
+func (s3FS *s3FSRW) Copy(src, dst string) (int64, error) {
 	if s3FS.logger != nil {
-		s3FS.logger.Debugf("%s - Copy(%s, %s)", s3FS.String(), dst, src)
+		s3FS.logger.Debugf("%s - Copy(%s, %s)", s3FS.String(), src, dst)
 	}
 	dstBucket, dstBucketPath := extractBucket(dst)
 	srcBucket, srcBucketPath := extractBucket(src)

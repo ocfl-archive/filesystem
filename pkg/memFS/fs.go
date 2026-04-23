@@ -122,7 +122,7 @@ func (m *memFSRW) Equal(fsys fs.FS) bool {
 	return false
 }
 
-func (m *memFSRW) Copy(dst, src string) (int64, error) {
+func (m *memFSRW) Copy(src, dst string) (int64, error) {
 	s, err := m.fs.Open(src)
 	if err != nil {
 		return 0, errors.Wrapf(err, "cannot open source '%s'", src)
@@ -140,14 +140,30 @@ func (m *memFSRW) Copy(dst, src string) (int64, error) {
 	return n, nil
 }
 
+func (m *memFSRW) WriteFile(name string, data []byte) (int64, error) {
+	fp, err := m.Create(name)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot create file '%s'", name)
+	}
+	count, err := fp.Write(data)
+	if err != nil {
+		fp.Close()
+		return 0, errors.Wrapf(err, "cannot write file '%s'", name)
+	}
+	if err := fp.Close(); err != nil {
+		return 0, errors.Wrapf(err, "cannot close file '%s'", name)
+	}
+	return int64(count), nil
+}
+
 func (m *memFSRW) Close() error {
 	return nil
 }
 
 // Interface Checks
 var (
-	//	_ writefs.FullFS = &memFSRW{}
-	_ fs.ReadDirFS  = &memFSRW{}
-	_ fs.ReadFileFS = &memFSRW{}
-	_ fs.StatFS     = &memFSRW{}
+	_ writefs.FullFS = &memFSRW{}
+	_ fs.ReadDirFS   = &memFSRW{}
+	_ fs.ReadFileFS  = &memFSRW{}
+	_ fs.StatFS      = &memFSRW{}
 )

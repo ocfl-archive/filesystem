@@ -18,7 +18,7 @@ The package defines several small, focused interfaces for write operations:
 - `RenameFS`: Provides a `Rename(oldPath, newPath string) error` method.
 - `RemoveFS`: Provides a `Remove(path string) error` method.
 - `WriteFileFS`: Provides a `WriteFile(name string, data []byte) (int64, error)` method.
-- `CopyFS`: Provides a `Copy(dst, src string) (int64, error)` method.
+- `CopyFS`: Provides a `Copy(src, dst string) (int64, error)` method.
 - `FullpathFS`: Provides a `Fullpath(name string) (string, error)` method for obtaining the full path of a file.
 
 ## `FullFS`

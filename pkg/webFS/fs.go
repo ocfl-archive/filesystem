@@ -46,7 +46,7 @@ type webFSRW struct {
 	tlsInsecureSkipVerify bool
 }
 
-func (d *webFSRW) Copy(dst, src string) (int64, error) {
+func (d *webFSRW) Copy(src, dst string) (int64, error) {
 	return 0, errors.New("read only filesystem")
 }
 
