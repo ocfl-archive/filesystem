@@ -60,6 +60,10 @@ type MiniKVStore struct {
 type MemFS struct {
 }
 
+type Afero struct {
+	BaseDir string `toml:"basedir"`
+}
+
 type VFS struct {
 	Name        string       `toml:"name"`
 	Type        string       `toml:"type"`
@@ -71,6 +75,7 @@ type VFS struct {
 	MiniKVStore *MiniKVStore `toml:"minikvstore,omitempty"`
 	Web         *Web         `toml:"web,omitempty"`
 	MemFS       *MemFS       `toml:"memfs,omitempty"`
+	Afero       *Afero       `toml:"afero,omitempty"`
 }
 
 type Config map[string]*VFS

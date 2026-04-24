@@ -1,0 +1,58 @@
+package aferoFS
+
+import (
+	"os"
+	"testing"
+
+	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/rs/zerolog"
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestAferoFS(t *testing.T) {
+	out := zerolog.ConsoleWriter{Out: os.Stderr}
+	zlogger := zerolog.New(out).With().Timestamp().Logger()
+	var logger zLogger.ZLogger = &zlogger
+
+	t.Run("MemMapFS", func(t *testing.T) {
+		memFs := afero.NewMemMapFs()
+		fsys, err := NewFS(memFs, logger)
+		assert.NoError(t, err)
+
+		filename := "test.txt"
+		content := []byte("hello world")
+
+		// Test WriteFile
+		n, err := fsys.WriteFile(filename, content)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(len(content)), n)
+
+		// Test Stat
+		fi, err := fsys.Stat(filename)
+		assert.NoError(t, err)
+		assert.Equal(t, filename, fi.Name())
+
+		// Test ReadFile
+		data, err := fsys.ReadFile(filename)
+		assert.NoError(t, err)
+		assert.Equal(t, content, data)
+
+		// Test Open
+		f, err := fsys.Open(filename)
+		assert.NoError(t, err)
+		defer f.Close()
+
+		stat, err := f.Stat()
+		assert.NoError(t, err)
+		assert.Equal(t, filename, stat.Name())
+
+		// Test ReadDir
+		err = fsys.MkDir("subdir")
+		assert.NoError(t, err)
+
+		entries, err := fsys.ReadDir(".")
+		assert.NoError(t, err)
+		assert.Len(t, entries, 2) // test.txt and subdir
+	})
+}

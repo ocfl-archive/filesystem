@@ -162,6 +162,20 @@ func (vfs *vFSRW) init(config Config) error {
 				toClose = append(toClose, closer)
 			}
 			vfs.fss[cfg.Name] = xFS
+		case "afero":
+			if cfg.Afero == nil {
+				closeAll()
+				return errors.Errorf("no afero section for filesystem '%s'", cfg.Name)
+			}
+			xFS, err := vfs.newAfero(name, cfg.Afero, cfg.ReadOnly, logger)
+			if err != nil {
+				closeAll()
+				return errors.Wrapf(err, "cannot create aferofs in '%s'", cfg.Name)
+			}
+			if closer, ok := xFS.(io.Closer); ok {
+				toClose = append(toClose, closer)
+			}
+			vfs.fss[cfg.Name] = xFS
 		}
 	}
 	return nil

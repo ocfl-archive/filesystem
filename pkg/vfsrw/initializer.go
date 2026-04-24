@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/aferoFS"
 	"github.com/je4/filesystem/v3/pkg/memFS"
 	"github.com/je4/filesystem/v3/pkg/miniKVStoreFSRW"
 	"github.com/je4/filesystem/v3/pkg/osfsrw"
@@ -205,4 +206,9 @@ func (vfs *vFSRW) newS3(name string, cfg *S3, readOnly bool, logger zLogger.ZLog
 
 func (vfs *vFSRW) newMemFS(name string, cfg *MemFS, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
 	return memFS.NewFS(logger)
+}
+
+func (vfs *vFSRW) newAfero(name string, cfg *Afero, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
+	createFunc := aferoFS.NewCreateFSFunc(logger)
+	return createFunc(nil, cfg.BaseDir, readOnly)
 }

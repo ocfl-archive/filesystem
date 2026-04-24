@@ -33,25 +33,6 @@ func (m *memFSRW) Open(name string) (fs.File, error) {
 	return &file{File: f}, nil
 }
 
-type file struct {
-	billy.File
-}
-
-func (f *file) Stat() (fs.FileInfo, error) {
-	// billy.File might have Stat() method, but we need to check if it matches fs.File
-	// Actually, billy.File.Lock/Unlock/Name/Write/Read/Seek/Close are common.
-	// We need to implement Stat() for fs.File interface.
-	// Looking at billy.Filesystem, it has Stat(path).
-	// But fs.File needs Stat() on the file handle.
-	// If billy.File doesn't have Stat, we might need to store the path or use the filesystem.
-	// memfs implementation of billy.File usually has a way to get info.
-
-	// Let's assume for now we can't easily get it from billy.File directly without more investigation.
-	// But wait, many billy implementations' File DOES have Stat().
-	// Let's try to see if it's just a type mismatch or missing.
-	return f.File.(interface{ Stat() (fs.FileInfo, error) }).Stat()
-}
-
 func (m *memFSRW) Create(path string) (writefs.FileWrite, error) {
 	f, err := m.fs.Create(path)
 	if err != nil {
@@ -166,4 +147,6 @@ var (
 	_ fs.ReadDirFS   = &memFSRW{}
 	_ fs.ReadFileFS  = &memFSRW{}
 	_ fs.StatFS      = &memFSRW{}
+	_ io.ReaderAt    = &file{}
+	_ io.Seeker      = &file{}
 )

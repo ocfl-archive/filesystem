@@ -1,6 +1,7 @@
 package memFS
 
 import (
+	"io"
 	"io/fs"
 	"os"
 	"testing"
@@ -120,5 +121,64 @@ func TestMemFS_MkDir(t *testing.T) {
 	fi, err = fs.Stat(mfs, dirName)
 	if err != nil || !fi.IsDir() {
 		t.Fatalf("nested dir not created correctly")
+	}
+}
+
+func TestMemFS_FileInterfaces(t *testing.T) {
+	logger := zerolog.New(os.Stderr)
+	var _logger zLogger.ZLogger = &logger
+
+	mfs, err := NewFS(_logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testData := []byte("0123456789")
+	testFile := "interfaces.txt"
+
+	_, err = mfs.WriteFile(testFile, testData)
+	if err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	f, err := mfs.Open(testFile)
+	if err != nil {
+		t.Fatalf("failed to open file: %v", err)
+	}
+	defer f.Close()
+
+	// Test Seeker
+	seeker, ok := f.(io.Seeker)
+	if !ok {
+		t.Fatal("file does not implement io.Seeker")
+	}
+
+	_, err = seeker.Seek(5, io.SeekStart)
+	if err != nil {
+		t.Fatalf("seek failed: %v", err)
+	}
+
+	buf := make([]byte, 2)
+	n, err := f.Read(buf)
+	if err != nil {
+		t.Fatalf("read failed: %v", err)
+	}
+	if n != 2 || string(buf) != "56" {
+		t.Fatalf("expected '56', got '%s'", string(buf))
+	}
+
+	// Test ReaderAt
+	readerAt, ok := f.(io.ReaderAt)
+	if !ok {
+		t.Fatal("file does not implement io.ReaderAt")
+	}
+
+	bufAt := make([]byte, 3)
+	n, err = readerAt.ReadAt(bufAt, 2)
+	if err != nil {
+		t.Fatalf("ReadAt failed: %v", err)
+	}
+	if n != 3 || string(bufAt) != "234" {
+		t.Fatalf("expected '234', got '%s'", string(bufAt))
 	}
 }
