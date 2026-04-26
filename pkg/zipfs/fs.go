@@ -104,7 +104,7 @@ func (zfs *zipFS) ReadFile(name string) ([]byte, error) {
 }
 
 func (zfs *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	name = clearPath(name)
+	name = clearPath(name) + "/"
 	var result []fs.DirEntry
 	for _, f := range zfs.File {
 		if strings.HasPrefix(f.Name, name) {
