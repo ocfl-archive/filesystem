@@ -10,7 +10,7 @@ import (
 )
 
 func NewCreateFSFunc(logger zLogger.ZLogger) writefs.CreateFSFunc {
-	return func(f *writefs.Factory, zipFile string, readOnly bool) (fs.FS, error) {
+	return func(f writefs.IFactory, zipFile string, readOnly bool) (fs.FS, error) {
 		parts := strings.Split(zipFile, "/")
 		if len(parts) < 2 {
 			return nil, errors.Errorf("invalid zip path: %s", zipFile)

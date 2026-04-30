@@ -10,7 +10,7 @@ import (
 )
 
 func NewCreateFSFunc(miniResolverClient *resolver.MiniResolver, domain, vfs, dir string, closer []io.Closer, readOnly bool, logger zLogger.ZLogger) writefs.CreateFSFunc {
-	return func(f *writefs.Factory, baseFolder string, readOnly bool) (fs.FS, error) {
+	return func(f writefs.IFactory, baseFolder string, readOnly bool) (fs.FS, error) {
 		return NewFS(miniResolverClient, domain, vfs, dir, closer, readOnly, logger)
 	}
 }

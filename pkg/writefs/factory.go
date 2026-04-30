@@ -16,7 +16,11 @@ const (
 	HighFS
 )
 
-type CreateFSFunc func(f *Factory, path string, readOnly bool) (fs.FS, error)
+type IFactory interface {
+	Get(path string, readOnly bool) (fs.FS, error)
+}
+
+type CreateFSFunc func(f IFactory, path string, readOnly bool) (fs.FS, error)
 
 type createFS struct {
 	level  levelFS
