@@ -91,6 +91,66 @@ func TestVFS_AferoFS(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestVFS_AferoFS_ComplexSchemes(t *testing.T) {
+	out := zerolog.ConsoleWriter{Out: os.Stderr}
+	logger := zerolog.New(out)
+	var _logger zLogger.ZLogger = &logger
+
+	cfg := Config{
+		"mem1": &VFS{
+			Name: "mem1",
+			Type: "afero",
+			Afero: &Afero{
+				BaseDir: "mem://",
+			},
+		},
+		"ro": &VFS{
+			Name: "ro",
+			Type: "afero",
+			Afero: &Afero{
+				BaseDir: "ro://?base=vfs://mem1/",
+			},
+		},
+		"cow": &VFS{
+			Name: "cow",
+			Type: "afero",
+			Afero: &Afero{
+				BaseDir: "cow://?base=vfs://ro/&layer=vfs://mem1/",
+			},
+		},
+	}
+
+	vfs, err := NewFS(cfg, _logger)
+	assert.NoError(t, err)
+	defer vfs.Close()
+
+	t.Run("ReadOnly", func(t *testing.T) {
+		testData := []byte("hello")
+		_, err := writefs.WriteFile(vfs, "vfs://mem1/test.txt", testData)
+		assert.NoError(t, err)
+
+		// Read from RO
+		data, err := vfs.ReadFile("vfs://ro/test.txt")
+		assert.NoError(t, err)
+		assert.Equal(t, testData, data)
+
+		// Write to RO should fail
+		_, err = writefs.WriteFile(vfs, "vfs://ro/fail.txt", []byte("fail"))
+		assert.Error(t, err)
+	})
+
+	t.Run("CopyOnWrite", func(t *testing.T) {
+		cowData := []byte("cow")
+		_, err := writefs.WriteFile(vfs, "vfs://cow/cow.txt", cowData)
+		assert.NoError(t, err)
+
+		// Should be in cow (mem1 layer)
+		data, err := vfs.ReadFile("vfs://mem1/cow.txt")
+		assert.NoError(t, err)
+		assert.Equal(t, cowData, data)
+	})
+}
+
 func TestVFS_AferoFS_FileInterfaces(t *testing.T) {
 	out := zerolog.ConsoleWriter{Out: os.Stderr}
 	logger := zerolog.New(out)
