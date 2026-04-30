@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"path"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,22 @@ import (
 	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 )
 
-func NewFS(config Config, logger zLogger.ZLogger) (*vFSRW, error) {
+type VFSRW interface {
+	fmt.Stringer
+	writefs.CopyFS
+	writefs.CreateFS
+	writefs.MkDirFS
+	writefs.RenameFS
+	writefs.RemoveFS
+	writefs.CloseFS
+	writefs.EqualFS
+	fs.FS
+	fs.ReadDirFS
+	fs.ReadFileFS
+	fs.StatFS
+}
+
+func NewFS(config Config, logger zLogger.ZLogger) (VFSRW, error) {
 
 	_logger := logger.With().Str("module", "vfsrw").Logger()
 	logger = &_logger
@@ -59,123 +75,131 @@ func (vfs *vFSRW) init(config Config) error {
 		}
 	}
 
-	for name, cfg := range config {
-		_logger := vfs.logger.With().Str("fs", name).Logger()
-		logger := &_logger
-		switch strings.ToLower(cfg.Type) {
-		case "minikvstore":
-			if cfg.MiniKVStore == nil {
-				closeAll()
-				return errors.Errorf("no minikvstore section for filesystem '%s'", cfg.Name)
+	for pass := 0; pass < 2; pass++ {
+		for name, cfg := range config {
+			if _, ok := vfs.fss[name]; ok {
+				continue
 			}
-			mkvsFS, closers, err := vfs.newMiniKVStore(name, cfg.MiniKVStore, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create minikvstore in '%s'", cfg.Name)
+			_logger := vfs.logger.With().Str("fs", name).Logger()
+			logger := &_logger
+			switch strings.ToLower(cfg.Type) {
+			case "minikvstore":
+				if cfg.MiniKVStore == nil {
+					closeAll()
+					return errors.Errorf("no minikvstore section for filesystem '%s'", cfg.Name)
+				}
+				mkvsFS, closers, err := vfs.newMiniKVStore(name, cfg.MiniKVStore, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create minikvstore in '%s'", cfg.Name)
+				}
+				toClose = append(toClose, closers...)
+				if closer, ok := mkvsFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = mkvsFS
+			case "web":
+				if cfg.Web == nil {
+					closeAll()
+					return errors.Errorf("no web section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newWeb(name, cfg.Web, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create webfs in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
+			case "os":
+				if cfg.OS == nil {
+					closeAll()
+					return errors.Errorf("no os section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newOS(name, cfg.OS, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create osfs in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
+			case "sftp":
+				if cfg.SFTP == nil {
+					closeAll()
+					return errors.Errorf("no sftp section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newSFTP(name, cfg.SFTP, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create sftpfsrw in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
+			case "s3":
+				if cfg.S3 == nil {
+					closeAll()
+					return errors.Errorf("no s3 section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newS3(name, cfg.S3, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
+			case "remote":
+				if cfg.Remote == nil {
+					closeAll()
+					return errors.Errorf("no Remote section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newRemote(name, cfg.Remote, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
+			case "memfs":
+				if cfg.MemFS == nil {
+					closeAll()
+					return errors.Errorf("no memfs section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newMemFS(name, cfg.MemFS, cfg.ReadOnly, logger)
+				if err != nil {
+					closeAll()
+					return errors.Wrapf(err, "cannot create memfs in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
+			case "afero":
+				if cfg.Afero == nil {
+					closeAll()
+					return errors.Errorf("no afero section for filesystem '%s'", cfg.Name)
+				}
+				xFS, err := vfs.newAfero(name, cfg.Afero, cfg.ReadOnly, logger)
+				if err != nil {
+					if pass == 0 {
+						continue
+					}
+					closeAll()
+					return errors.Wrapf(err, "cannot create aferofs in '%s'", cfg.Name)
+				}
+				if closer, ok := xFS.(io.Closer); ok {
+					toClose = append(toClose, closer)
+				}
+				vfs.fss[cfg.Name] = xFS
 			}
-			toClose = append(toClose, closers...)
-			if closer, ok := mkvsFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = mkvsFS
-		case "web":
-			if cfg.Web == nil {
-				closeAll()
-				return errors.Errorf("no web section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newWeb(name, cfg.Web, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create webfs in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
-		case "os":
-			if cfg.OS == nil {
-				closeAll()
-				return errors.Errorf("no os section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newOS(name, cfg.OS, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create osfs in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
-		case "sftp":
-			if cfg.SFTP == nil {
-				closeAll()
-				return errors.Errorf("no sftp section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newSFTP(name, cfg.SFTP, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create sftpfsrw in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
-		case "s3":
-			if cfg.S3 == nil {
-				closeAll()
-				return errors.Errorf("no s3 section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newS3(name, cfg.S3, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
-		case "remote":
-			if cfg.Remote == nil {
-				closeAll()
-				return errors.Errorf("no Remote section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newRemote(name, cfg.Remote, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
-		case "memfs":
-			if cfg.MemFS == nil {
-				closeAll()
-				return errors.Errorf("no memfs section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newMemFS(name, cfg.MemFS, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create memfs in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
-		case "afero":
-			if cfg.Afero == nil {
-				closeAll()
-				return errors.Errorf("no afero section for filesystem '%s'", cfg.Name)
-			}
-			xFS, err := vfs.newAfero(name, cfg.Afero, cfg.ReadOnly, logger)
-			if err != nil {
-				closeAll()
-				return errors.Wrapf(err, "cannot create aferofs in '%s'", cfg.Name)
-			}
-			if closer, ok := xFS.(io.Closer); ok {
-				toClose = append(toClose, closer)
-			}
-			vfs.fss[cfg.Name] = xFS
 		}
 	}
 	return nil
@@ -187,6 +211,22 @@ type vFSRW struct {
 	miniResolverClientTLS    *tls.Config
 	miniResolverClientLoader loader.Loader
 	logger                   zLogger.ZLogger
+}
+
+func (vfs *vFSRW) Get(name string, readOnly bool) (fs.FS, error) {
+	u, err := url.Parse(name)
+	if err == nil && u.Scheme == "vfs" {
+		name = u.Host
+	} else if strings.HasPrefix(name, "vfs://") {
+		name = strings.TrimPrefix(name, "vfs://")
+		name = strings.TrimSuffix(name, "/")
+	}
+
+	f, ok := vfs.fss[name]
+	if !ok {
+		return nil, errors.Errorf("filesystem %s not found", name)
+	}
+	return f, nil
 }
 
 func (vfs *vFSRW) AddFS(name string, fsys fs.FS) {
@@ -421,16 +461,5 @@ func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 }
 
 var (
-	_ fmt.Stringer     = (*vFSRW)(nil)
-	_ writefs.CopyFS   = (*vFSRW)(nil)
-	_ writefs.CreateFS = (*vFSRW)(nil)
-	_ writefs.MkDirFS  = (*vFSRW)(nil)
-	_ writefs.RenameFS = (*vFSRW)(nil)
-	_ writefs.RemoveFS = (*vFSRW)(nil)
-	_ writefs.CloseFS  = (*vFSRW)(nil)
-	_ writefs.EqualFS  = (*vFSRW)(nil)
-	_ fs.FS            = (*vFSRW)(nil)
-	_ fs.ReadDirFS     = (*vFSRW)(nil)
-	_ fs.ReadFileFS    = (*vFSRW)(nil)
-	_ fs.StatFS        = (*vFSRW)(nil)
+	_ VFSRW = (*vFSRW)(nil)
 )
