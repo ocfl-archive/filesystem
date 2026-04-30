@@ -128,6 +128,10 @@ func (m *aferoFSRW) WriteFile(name string, data []byte) (int64, error) {
 	return int64(len(data)), nil
 }
 
+func (m *aferoFSRW) GetAfero() afero.Fs {
+	return m.fs
+}
+
 func (m *aferoFSRW) Close() error {
 	return nil
 }

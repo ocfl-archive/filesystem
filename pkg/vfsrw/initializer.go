@@ -210,5 +210,5 @@ func (vfs *vFSRW) newMemFS(name string, cfg *MemFS, readOnly bool, logger zLogge
 
 func (vfs *vFSRW) newAfero(name string, cfg *Afero, readOnly bool, logger zLogger.ZLogger) (fs.FS, error) {
 	createFunc := aferoFS.NewCreateFSFunc(logger)
-	return createFunc(nil, cfg.BaseDir, readOnly)
+	return createFunc(vfs, cfg.BaseDir, readOnly)
 }
