@@ -30,6 +30,7 @@ type VFSRW interface {
 	fs.ReadDirFS
 	fs.ReadFileFS
 	fs.StatFS
+	AddFS(name string, fsys fs.FS)
 }
 
 func NewFS(config Config, logger zLogger.ZLogger) (VFSRW, error) {
