@@ -6,7 +6,7 @@ import (
 	"emperror.dev/errors"
 )
 
-var matchPathRegexp = regexp.MustCompile(`^vfs://?([^/]+)/(.*)$`)
+var matchPathRegexp = regexp.MustCompile(`^vfs://?([^/]+)(/(.*))?$`)
 
 func matchPath(vfsPath string) (name string, path string, err error) {
 	matches := matchPathRegexp.FindStringSubmatch(vfsPath)
@@ -15,6 +15,6 @@ func matchPath(vfsPath string) (name string, path string, err error) {
 		return
 	}
 	name = matches[1]
-	path = matches[2]
+	path = matches[3]
 	return
 }
