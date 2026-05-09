@@ -50,6 +50,8 @@ func (zipFS *zipFSCloser) ReadDir(name string) ([]fs.DirEntry, error) {
 
 type IsRefCountFS interface {
 	fs.FS
+	IncRef()
+	DecRef()
 	RefCount() int32
 }
 

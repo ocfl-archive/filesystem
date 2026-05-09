@@ -15,6 +15,23 @@ import (
 	"github.com/maypok86/otter/v2"
 )
 
+type fileCloser struct {
+	fs.File
+	closeFunc func() error
+}
+
+func (fc *fileCloser) Close() error {
+	err := fc.File.Close()
+	if fc.closeFunc != nil {
+		if err2 := fc.closeFunc(); err2 != nil {
+			if err == nil {
+				err = err2
+			}
+		}
+	}
+	return err
+}
+
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only
 // it implements readwritefs.ReadWriteFS, fs.ReadDirFS, fs.ReadFileFS, basefs.CloserFS
 func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
@@ -205,6 +222,11 @@ func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
 	}
 
+	if refFS, ok := zipFS.(IsRefCountFS); ok {
+		refFS.IncRef()
+		defer refFS.DecRef()
+	}
+
 	return fs.Stat(zipFS, zipPath)
 }
 
@@ -252,6 +274,12 @@ func (fsys *zipAsFolderFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if zipPath == "" {
 		zipPath = "."
 	}
+
+	if refFS, ok := zipFS.(IsRefCountFS); ok {
+		refFS.IncRef()
+		defer refFS.DecRef()
+	}
+
 	entries, err := fs.ReadDir(zipFS, zipPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot read directory '%s' in zip '%s'", zipPath, zipFile)
@@ -276,6 +304,23 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 	zipFS, err := fsys.getZipFS(zipFile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
+	}
+	if refFS, ok := zipFS.(IsRefCountFS); ok {
+		refFS.IncRef()
+		rc, err := zipFS.Open(zipPath)
+		if err != nil {
+			refFS.DecRef()
+			return nil, errors.Wrapf(err, "cannot open file '%s' in zip file '%s'", zipPath, zipFile)
+		}
+		fsys.logger.Debug().Msgf("Open('%s') -> IncRef()", name)
+		return &fileCloser{
+			File: rc,
+			closeFunc: func() error {
+				fsys.logger.Debug().Msgf("Close('%s') -> DecRef()", name)
+				refFS.DecRef()
+				return nil
+			},
+		}, nil
 	}
 	rc, err := zipFS.Open(zipPath)
 	if err != nil {

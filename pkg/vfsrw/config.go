@@ -58,19 +58,25 @@ type Afero struct {
 	BaseDir string `toml:"basedir"`
 }
 
+type ZipAsFolder struct {
+	Enabled   bool `toml:"enabled"`
+	CacheSize uint `toml:"cachesize"`
+	Compress  bool `toml:"compress"`
+	ReadOnly  bool `toml:"readonly"`
+}
+
 type VFS struct {
-	Name             string       `toml:"name"`
-	Type             string       `toml:"type"`
-	ReadOnly         bool         `toml:"readonly"`
-	ZipAsFolder      bool         `toml:"zipasfolder"`
-	ZipAsFolderCache uint         `toml:"zipasfoldercache"`
-	S3               *S3          `toml:"s3,omitempty"`
-	OS               *OS          `toml:"os,omitempty"`
-	SFTP             *SFTP        `toml:"sftp,omitempty"`
-	Remote           *Remote      `toml:"remote,omitempty"`
-	MiniKVStore      *MiniKVStore `toml:"minikvstore,omitempty"`
-	Web              *Web         `toml:"web,omitempty"`
-	Afero            *Afero       `toml:"afero,omitempty"`
+	Name        string       `toml:"name"`
+	Type        string       `toml:"type"`
+	ReadOnly    bool         `toml:"readonly"`
+	ZipAsFolder *ZipAsFolder `toml:"zipasfolder"`
+	S3          *S3          `toml:"s3,omitempty"`
+	OS          *OS          `toml:"os,omitempty"`
+	SFTP        *SFTP        `toml:"sftp,omitempty"`
+	Remote      *Remote      `toml:"remote,omitempty"`
+	MiniKVStore *MiniKVStore `toml:"minikvstore,omitempty"`
+	Web         *Web         `toml:"web,omitempty"`
+	Afero       *Afero       `toml:"afero,omitempty"`
 }
 
 type Config map[string]*VFS

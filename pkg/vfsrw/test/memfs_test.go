@@ -133,11 +133,10 @@ func TestVFS_MemFS_Zip(t *testing.T) {
 
 	cfg := vfsrw.Config{
 		"testmem": &vfsrw.VFS{
-			Name:             "testmem",
-			Type:             "afero",
-			ZipAsFolder:      true,
-			ZipAsFolderCache: 10,
-			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
+			Name:        "testmem",
+			Type:        "afero",
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
 

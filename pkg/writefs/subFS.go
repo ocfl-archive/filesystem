@@ -1,22 +1,23 @@
 package writefs
 
 import (
-	"emperror.dev/errors"
 	"fmt"
 	"io/fs"
 	"path"
+
+	"emperror.dev/errors"
 )
 
-type subFS struct {
-	fsys fs.FS
-	dir  string
-}
-
-func Sub(fsys fs.FS, dir string) (fs.FS, error) {
+func NewSubFS(fsys fs.FS, dir string) (fs.FS, error) {
 	return &subFS{
 		fsys: fsys,
 		dir:  dir,
 	}, nil
+}
+
+type subFS struct {
+	fsys fs.FS
+	dir  string
 }
 
 func (sfs *subFS) Copy(src, dst string) (int64, error) {

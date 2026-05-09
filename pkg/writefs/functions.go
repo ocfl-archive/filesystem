@@ -27,6 +27,13 @@ func SubFSCreate(fsys fs.FS, path string) (fs.FS, error) {
 	return Sub(fsys, path)
 }
 
+func Sub(fsys fs.FS, dir string) (fs.FS, error) {
+	if _fsys, ok := fsys.(SubFS); ok {
+		return _fsys.Sub(dir)
+	}
+	return NewSubFS(fsys, dir)
+}
+
 func MkDir(fsys fs.FS, path string) error {
 	if _fsys, ok := fsys.(MkDirFS); ok {
 		return _fsys.MkDir(path)

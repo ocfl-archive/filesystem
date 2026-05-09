@@ -50,6 +50,10 @@ type JoinFS interface {
 	Join(fsys fs.FS, elems ...string) string
 }
 
+type SubFS interface {
+	Sub(dir string) (fs.FS, error)
+}
+
 type FullFS interface {
 	CopyFS
 	CreateFS
@@ -61,6 +65,7 @@ type FullFS interface {
 	WriteFileFS
 	FullpathFS
 	EqualFS
+	SubFS
 	fs.FS
 	fs.ReadDirFS
 	fs.ReadFileFS

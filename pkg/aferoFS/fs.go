@@ -140,6 +140,10 @@ func (m *aferoFSRW) Close() error {
 	return nil
 }
 
+func (m *aferoFSRW) Sub(dir string) (fs.FS, error) {
+	return writefs.Sub(m, dir)
+}
+
 // Interface Checks
 var (
 	_ writefs.FullFS = &aferoFSRW{}
