@@ -48,6 +48,18 @@ func (zipFS *zipFSCloser) ReadDir(name string) ([]fs.DirEntry, error) {
 	return readDirFS.ReadDir(name)
 }
 
+type IsRefCountFS interface {
+	fs.FS
+	RefCount() int32
+}
+
+func (zipFS *zipFSCloser) RefCount() int32 {
+	if refFS, ok := zipFS.FS.(IsRefCountFS); ok {
+		return refFS.RefCount()
+	}
+	return 0
+}
+
 func (zipFS *zipFSCloser) Close() error {
 	return errors.WithStack(zipFS.zipFile.Close())
 }
