@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"strings"
+	"sync/atomic"
 
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
@@ -36,9 +37,22 @@ func NewFS(r io.ReaderAt, size int64, name string, logger zLogger.ZLogger) (fs *
 
 type zipFS struct {
 	*zip.Reader
-	mutex  *writefs.Mutex
-	name   string
-	logger zLogger.ZLogger
+	mutex    *writefs.Mutex
+	name     string
+	logger   zLogger.ZLogger
+	refCount atomic.Int32
+}
+
+func (zfs *zipFS) IncRef() {
+	zfs.refCount.Add(1)
+}
+
+func (zfs *zipFS) DecRef() {
+	zfs.refCount.Add(-1)
+}
+
+func (zfs *zipFS) RefCount() int32 {
+	return zfs.refCount.Load()
 }
 
 func (zfs *zipFS) Close() error {
@@ -76,9 +90,15 @@ func (zfs *zipFS) Sub(dir string) (fs.FS, error) {
 */
 
 func (zfs *zipFS) Stat(name string) (fs.FileInfo, error) {
+	zfs.mutex.Lock()
+	defer zfs.mutex.Unlock()
+	return zfs.stat(name)
+}
+
+func (zfs *zipFS) stat(name string) (fs.FileInfo, error) {
 	name = clearPath(name)
 	for _, f := range zfs.File {
-		if strings.HasPrefix(f.Name, name) && len(f.Name) != len(name) {
+		if strings.HasPrefix(f.Name, name) && len(f.Name) != len(name) && f.Name[len(name)] == '/' {
 			return writefs.NewFileInfoDir(name), nil
 		}
 		if f.Name == name {
@@ -89,6 +109,8 @@ func (zfs *zipFS) Stat(name string) (fs.FileInfo, error) {
 }
 
 func (zfs *zipFS) ReadFile(name string) ([]byte, error) {
+	zfs.mutex.Lock()
+	defer zfs.mutex.Unlock()
 	name = clearPath(name)
 	for _, f := range zfs.File {
 		if f.Name == name {
@@ -96,15 +118,21 @@ func (zfs *zipFS) ReadFile(name string) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			defer rc.Close()
-			return io.ReadAll(rc)
+			data, err := io.ReadAll(rc)
+			rc.Close()
+			return data, err
 		}
 	}
 	return nil, fs.ErrNotExist
 }
 
 func (zfs *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	name = clearPath(name) + "/"
+	zfs.mutex.Lock()
+	defer zfs.mutex.Unlock()
+	name = clearPath(name)
+	if name != "" {
+		name += "/"
+	}
 	var result []fs.DirEntry
 	for _, f := range zfs.File {
 		if strings.HasPrefix(f.Name, name) {
@@ -128,6 +156,8 @@ func (zfs *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 func (zfs *zipFS) Open(name string) (fs.File, error) {
+	zfs.mutex.Lock()
+	defer zfs.mutex.Unlock()
 	name = clearPath(name)
 	namePrefix := name + "/"
 	for _, f := range zfs.File {
@@ -140,19 +170,19 @@ func (zfs *zipFS) Open(name string) (fs.File, error) {
 					return nil, errors.Wrapf(err, "failed to open file in raw mode '%s'", name)
 				}
 				if rseeker, ok := w.(io.ReadSeeker); ok {
-					zfs.mutex.Lock()
-					return NewFile[io.ReadSeeker](f.FileInfo(), rseeker, zfs.mutex), nil
+					zfs.IncRef()
+					return NewFile[io.ReadSeeker](f.FileInfo(), rseeker, zfs.mutex, zfs.DecRef), nil
 				} else {
-					zfs.mutex.Lock()
-					return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex), nil
+					zfs.IncRef()
+					return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
 				}
 			} else {
 				w, err := f.Open()
 				if err != nil {
 					return nil, errors.Wrapf(err, "failed to open file '%s'", name)
 				}
-				zfs.mutex.Lock()
-				return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex), nil
+				zfs.IncRef()
+				return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
 			}
 		}
 	}
@@ -160,14 +190,16 @@ func (zfs *zipFS) Open(name string) (fs.File, error) {
 }
 
 func (zfs *zipFS) OpenRaw(name string) (fs.File, *zip.FileHeader, error) {
+	zfs.mutex.Lock()
+	defer zfs.mutex.Unlock()
 	for _, f := range zfs.File {
 		if f.Name == name {
 			w, err := f.OpenRaw()
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to open file '%s'", name)
 			}
-			zfs.mutex.Lock()
-			return NewFile(f.FileInfo(), writefs.NewNopReadCloser(w), zfs.mutex), &f.FileHeader, nil
+			zfs.IncRef()
+			return NewFile(f.FileInfo(), writefs.NewNopReadCloser(w), zfs.mutex, zfs.DecRef), &f.FileHeader, nil
 		}
 	}
 	return nil, nil, fs.ErrNotExist
