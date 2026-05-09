@@ -2,6 +2,7 @@ package vfsrw
 
 import (
 	"regexp"
+	"strings"
 
 	"emperror.dev/errors"
 )
@@ -9,12 +10,14 @@ import (
 var matchPathRegexp = regexp.MustCompile(`^vfs://?([^/]+)(/(.*))?$`)
 
 func matchPath(vfsPath string) (name string, path string, err error) {
-	matches := matchPathRegexp.FindStringSubmatch(vfsPath)
-	if matches == nil {
-		err = errors.Errorf("invalid path format '%s'", vfsPath)
+	if strings.HasPrefix(vfsPath, "vfs:/") {
+		matches := matchPathRegexp.FindStringSubmatch(vfsPath)
+		if matches == nil {
+			return "", "", errors.Errorf("invalid vfs path: %s", vfsPath)
+		}
+		name = matches[1]
+		path = matches[3]
 		return
 	}
-	name = matches[1]
-	path = matches[3]
-	return
+	return pathToVFSPath(vfsPath)
 }
