@@ -5,11 +5,10 @@ go 1.26
 require (
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.6.0
-	github.com/bluele/gcache v0.0.2
-	github.com/go-git/go-billy/v5 v5.9.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/je4/trustutil/v2 v2.0.31
 	github.com/je4/utils/v2 v2.0.68
+	github.com/maypok86/otter/v2 v2.3.0
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/pkg/sftp v1.13.10
 	github.com/rs/zerolog v1.35.1

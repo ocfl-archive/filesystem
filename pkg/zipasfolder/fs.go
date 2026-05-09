@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	"github.com/bluele/gcache"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/maypok86/otter/v2"
 )
 
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only
@@ -19,83 +19,41 @@ import (
 func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
 	_logger := logger.With().Str("class", "zipAsFolderFS").Logger()
 	logger = &_logger
+	zipCache, err := otter.New[string, fs.FS](&otter.Options[string, fs.FS]{
+		MaximumSize: cacheSize,
+		OnAtomicDeletion: func(e otter.DeletionEvent[string, fs.FS]) {
+			logger.Debug().Msgf("evict zip file '%s' (cause: %v)", e.Key, e.Cause)
+			zipFS := e.Value
+			// wait if it is locked or has open files
+			for range 100 {
+				locked := false
+				if lockedFS, ok := zipFS.(writefs.IsLockedFS); ok {
+					if lockedFS.IsLocked() {
+						locked = true
+					}
+				}
+				if refFS, ok := zipFS.(IsRefCountFS); ok {
+					if refFS.RefCount() > 0 {
+						locked = true
+					}
+				}
+				if !locked {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			writefs.Close(zipFS)
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create otter cache")
+	}
 	f := &zipAsFolderFS{
 		baseFS:   baseFS,
 		readOnly: readOnly,
-		zipCache: gcache.New(cacheSize).
-			LRU().
-			LoaderFunc(func(key interface{}) (interface{}, error) {
-				zipFilename, ok := key.(string)
-				logger.Debug().Msgf("load zip file '%s'", zipFilename)
-				if !ok {
-					return nil, errors.Errorf("cannot cast key %v to string", key)
-				}
-				zipFile, err := baseFS.Open(zipFilename)
-				if err != nil {
-					return nil, errors.Wrapf(err, "cannot open zip file '%s'", zipFilename)
-				}
-				zipFS, err := NewZipFSCloser(zipFile, zipFilename, logger)
-				if err != nil {
-					logger.Debug().Msgf("load zip file '%s' FAILED: %v", zipFilename, err)
-					return nil, errors.Wrapf(err, "cannot create zipfscloser for '%s'", zipFilename)
-				}
-				return zipFS, nil
-			}).
-			EvictedFunc(func(key, value any) {
-				logger.Debug().Msgf("evict zip file '%s'", key)
-				zipFS, ok := value.(fs.FS)
-				if !ok {
-					return
-				}
-				// wait if it is locked or has open files
-				for range 100 {
-					locked := false
-					if lockedFS, ok := zipFS.(writefs.IsLockedFS); ok {
-						if lockedFS.IsLocked() {
-							locked = true
-						}
-					}
-					if refFS, ok := zipFS.(IsRefCountFS); ok {
-						if refFS.RefCount() > 0 {
-							locked = true
-						}
-					}
-					if !locked {
-						break
-					}
-					time.Sleep(10 * time.Millisecond)
-				}
-				writefs.Close(zipFS)
-			}).
-			PurgeVisitorFunc(func(key, value any) {
-				logger.Debug().Msgf("purge zip file '%s'", key)
-				zipFS, ok := value.(fs.FS)
-				if !ok {
-					return
-				}
-				// wait if it is locked or has open files
-				for range 100 {
-					locked := false
-					if lockedFS, ok := zipFS.(writefs.IsLockedFS); ok {
-						if lockedFS.IsLocked() {
-							locked = true
-						}
-					}
-					if refFS, ok := zipFS.(IsRefCountFS); ok {
-						if refFS.RefCount() > 0 {
-							locked = true
-						}
-					}
-					if !locked {
-						break
-					}
-					time.Sleep(10 * time.Millisecond)
-				}
-				writefs.Close(zipFS)
-			}).
-			Build(),
-		end:    make(chan bool),
-		logger: logger,
+		zipCache: zipCache,
+		end:      make(chan bool),
+		logger:   logger,
 	}
 	go func() {
 		for alive := true; alive; {
@@ -114,7 +72,7 @@ func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (
 
 type zipAsFolderFS struct {
 	baseFS   fs.FS
-	zipCache gcache.Cache
+	zipCache *otter.Cache[string, fs.FS]
 	lock     sync.RWMutex
 	end      chan bool
 	logger   zLogger.ZLogger
@@ -162,6 +120,30 @@ func (fsys *zipAsFolderFS) MkDir(path string) error {
 	return writefs.MkDir(fsys.baseFS, path)
 }
 
+func (fsys *zipAsFolderFS) getZipFS(zipFile string) (fs.FS, error) {
+	fsys.lock.Lock()
+	defer fsys.lock.Unlock()
+
+	if zipFS, ok := fsys.zipCache.GetIfPresent(zipFile); ok {
+		return zipFS, nil
+	}
+
+	fsys.logger.Debug().Msgf("load zip file '%s'", zipFile)
+	f, err := fsys.baseFS.Open(zipFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot open zip file '%s'", zipFile)
+	}
+	zipFS, err := NewZipFSCloser(f, zipFile, fsys.logger)
+	if err != nil {
+		fsys.logger.Debug().Msgf("load zip file '%s' FAILED: %v", zipFile, err)
+		return nil, errors.Wrapf(err, "cannot create zipfscloser for '%s'", zipFile)
+	}
+	fsys.zipCache.Set(zipFile, zipFS)
+	// Ensure otter processes the addition if possible,
+	// though Set is usually enough to make it visible to GetIfPresent
+	return zipFS, nil
+}
+
 // Stat returns the file info for a given path
 func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 	fsys.logger.Debug().Msgf("Stat('%s')", name)
@@ -180,10 +162,8 @@ func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 	}
 	if zipPath == "" || zipPath == "." {
 		// handle the zip file itself as a directory
-		fsys.lock.Lock()
-		zipFSCache, err := fsys.zipCache.Get(zipFile)
+		zipFS, err := fsys.getZipFS(zipFile)
 		if err != nil {
-			fsys.lock.Unlock()
 			fsys.logger.Debug().Msgf("Stat: cannot get zip file '%s' from cache: %v", zipFile, err)
 			// check if it is just a file
 			info, err2 := fs.Stat(fsys.baseFS, zipFile)
@@ -199,8 +179,7 @@ func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 			fsys.logger.Debug().Msgf("Stat: zip file '%s' NOT found on baseFS (baseFS type: %T): %v", zipFile, fsys.baseFS, err2)
 			return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
 		}
-		fsys.lock.Unlock()
-		if statFS, ok := zipFSCache.(fs.StatFS); ok {
+		if statFS, ok := zipFS.(fs.StatFS); ok {
 			_, err := statFS.Stat(".")
 			if err == nil {
 				// ensure the name is the zip file name, not "."
@@ -209,19 +188,11 @@ func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 		}
 		return writefs.NewFileInfoDir(filepath.Base(zipFile)), nil
 	}
-	fsys.lock.Lock()
-	zipFSCache, err := fsys.zipCache.Get(zipFile)
+	zipFS, err := fsys.getZipFS(zipFile)
 	if err != nil {
-		fsys.lock.Unlock()
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
 	}
 
-	zipFS, ok := zipFSCache.(fs.FS)
-	if !ok {
-		fsys.lock.Unlock()
-		return nil, errors.Errorf("cannot cast zip file '%s' type %T to fs.FS", zipFile, zipFSCache)
-	}
-	defer fsys.lock.Unlock()
 	return fs.Stat(zipFS, zipPath)
 }
 
@@ -262,21 +233,13 @@ func (fsys *zipAsFolderFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if zipPath == "" || zipPath == "." {
 		zipPath = "."
 	}
-	fsys.lock.Lock()
-	zipFSCache, err := fsys.zipCache.Get(zipFile)
+	zipFS, err := fsys.getZipFS(zipFile)
 	if err != nil {
-		fsys.lock.Unlock()
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
-	}
-	zipFS, ok := zipFSCache.(fs.FS)
-	if !ok {
-		fsys.lock.Unlock()
-		return nil, errors.Errorf("cannot cast zip file '%s' to fs.FS", zipFile)
 	}
 	if zipPath == "" {
 		zipPath = "."
 	}
-	defer fsys.lock.Unlock()
 	entries, err := fs.ReadDir(zipFS, zipPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot read directory '%s' in zip '%s'", zipPath, zipFile)
@@ -298,18 +261,10 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 		return file, nil
 	}
 
-	fsys.lock.Lock()
-	zipFSCache, err := fsys.zipCache.Get(zipFile)
+	zipFS, err := fsys.getZipFS(zipFile)
 	if err != nil {
-		fsys.lock.Unlock()
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
 	}
-	zipFS, ok := zipFSCache.(fs.FS)
-	if !ok {
-		fsys.lock.Unlock()
-		return nil, errors.Errorf("cannot cast zip file '%s' to fs.FS", zipFile)
-	}
-	defer fsys.lock.Unlock()
 	rc, err := zipFS.Open(zipPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot open file '%s' in zip file '%s'", zipPath, zipFile)
@@ -319,10 +274,8 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 
 // Close closes the filesystem and underlying fs if possible
 func (fsys *zipAsFolderFS) Close() error {
-	fsys.lock.Lock()
-	defer fsys.lock.Unlock()
 	fsys.end <- true
-	fsys.zipCache.Purge()
+	fsys.zipCache.InvalidateAll()
 
 	if closer, ok := fsys.baseFS.(io.Closer); ok {
 		closer.Close()
@@ -331,17 +284,14 @@ func (fsys *zipAsFolderFS) Close() error {
 }
 
 func (fsys *zipAsFolderFS) ClearUnlocked() error {
-	fsys.lock.Lock()
-	defer fsys.lock.Unlock()
-	fsMap := fsys.zipCache.GetALL(false)
-	for key, mFS := range fsMap {
-		isLockedFS, ok := mFS.(writefs.IsLockedFS)
+	for key, value := range fsys.zipCache.All() {
+		isLockedFS, ok := value.(writefs.IsLockedFS)
 		if !ok {
 			// fallback if it doesn't implement IsLockedFS, but zipfs should
 			continue
 		}
 		if !isLockedFS.IsLocked() {
-			fsys.zipCache.Remove(key)
+			fsys.zipCache.Invalidate(key)
 		}
 	}
 	return nil
