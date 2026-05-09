@@ -8,18 +8,20 @@ import (
 	"github.com/je4/filesystem/v3/pkg/writefs"
 )
 
-func NewFile[E io.Reader](info fs.FileInfo, rc E, mutex *writefs.Mutex) fs.File {
+func NewFile[E io.Reader](info fs.FileInfo, rc E, mutex *writefs.Mutex, closeFunc func()) fs.File {
 	return &file[E]{
-		reader: rc,
-		fi:     info,
-		mutex:  mutex,
+		reader:    rc,
+		fi:        info,
+		mutex:     mutex,
+		closeFunc: closeFunc,
 	}
 }
 
 type file[E io.Reader] struct {
-	reader E
-	fi     fs.FileInfo
-	mutex  *writefs.Mutex
+	reader    E
+	fi        fs.FileInfo
+	mutex     *writefs.Mutex
+	closeFunc func()
 }
 
 func (f *file[E]) Seek(offset int64, whence int) (int64, error) {
@@ -30,6 +32,8 @@ func (f *file[E]) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (f *file[E]) Read(bytes []byte) (int, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 	return f.reader.Read(bytes)
 }
 
@@ -38,7 +42,9 @@ func (f *file[E]) Stat() (fs.FileInfo, error) {
 }
 
 func (f *file[E]) Close() error {
-	defer f.mutex.Unlock()
+	if f.closeFunc != nil {
+		defer f.closeFunc()
+	}
 	if closer, ok := any(f.reader).(io.Closer); ok {
 		return closer.Close()
 	}
