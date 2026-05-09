@@ -183,6 +183,7 @@ func TestZipAsFolder_Afero(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
@@ -206,6 +207,7 @@ func TestZipAsFolder_OS(t *testing.T) {
 		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			OS:               &vfsrw.OS{BaseDir: tempDir},
 		},
@@ -231,6 +233,7 @@ func TestZipAsFolder_SFTP(t *testing.T) {
 		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
@@ -260,6 +263,7 @@ func TestZipAsFolder_S3(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(endpoint),
@@ -294,6 +298,7 @@ func TestZipAsFolder_WebFS(t *testing.T) {
 			Name:             "web",
 			Type:             "web",
 			ReadOnly:         true,
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
@@ -336,18 +341,21 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			OS:               &vfsrw.OS{BaseDir: osTempDir},
 		},
 		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
@@ -360,6 +368,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
@@ -373,6 +382,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 		"web": &vfsrw.VFS{
 			Name:             "web",
 			Type:             "web",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
@@ -515,18 +525,21 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 2,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 2,
 			OS:               &vfsrw.OS{BaseDir: osTempDir},
 		},
 		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 2,
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
@@ -539,6 +552,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 2,
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
@@ -552,6 +566,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 		"web": &vfsrw.VFS{
 			Name:             "web",
 			Type:             "web",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 2,
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
@@ -658,6 +673,7 @@ func TestZipAsFolder_Stat(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 2,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
@@ -756,18 +772,21 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 20,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 20,
 			OS:               &vfsrw.OS{BaseDir: osTempDir},
 		},
 		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 20,
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
@@ -780,6 +799,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 20,
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
@@ -793,6 +813,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"web": &vfsrw.VFS{
 			Name:             "web",
 			Type:             "web",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 20,
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",

@@ -135,6 +135,7 @@ func TestVFS_MemFS_Zip(t *testing.T) {
 		"testmem": &vfsrw.VFS{
 			Name:             "testmem",
 			Type:             "afero",
+			ZipAsFolder:      true,
 			ZipAsFolderCache: 10,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},

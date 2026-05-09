@@ -97,7 +97,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create minikvstore in '%s'", cfg.Name)
 				}
 				toClose = append(toClose, closers...)
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()
@@ -119,7 +119,7 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create webfs in '%s'", cfg.Name)
 				}
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()
@@ -141,7 +141,7 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create osfs in '%s'", cfg.Name)
 				}
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()
@@ -163,7 +163,7 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create sftpfsrw in '%s'", cfg.Name)
 				}
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()
@@ -185,7 +185,7 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
 				}
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()
@@ -207,7 +207,7 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
 				}
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()
@@ -232,7 +232,7 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create aferofs in '%s'", cfg.Name)
 				}
-				if cfg.ZipAsFolderCache > 0 {
+				if cfg.ZipAsFolder && cfg.ZipAsFolderCache > 0 {
 					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
 					if err != nil {
 						closeAll()

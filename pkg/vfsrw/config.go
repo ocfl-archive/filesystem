@@ -62,6 +62,7 @@ type VFS struct {
 	Name             string       `toml:"name"`
 	Type             string       `toml:"type"`
 	ReadOnly         bool         `toml:"readonly"`
+	ZipAsFolder      bool         `toml:"zipasfolder"`
 	ZipAsFolderCache uint         `toml:"zipasfoldercache"`
 	S3               *S3          `toml:"s3,omitempty"`
 	OS               *OS          `toml:"os,omitempty"`
