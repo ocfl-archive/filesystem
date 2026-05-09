@@ -12,6 +12,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/zipasfolder"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
@@ -89,16 +90,24 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Errorf("no minikvstore section for filesystem '%s'", cfg.Name)
 				}
-				mkvsFS, closers, err := vfs.newMiniKVStore(name, cfg.MiniKVStore, cfg.ReadOnly, logger)
+				xFS, closers, err := vfs.newMiniKVStore(name, cfg.MiniKVStore, cfg.ReadOnly, logger)
 				if err != nil {
 					closeAll()
 					return errors.Wrapf(err, "cannot create minikvstore in '%s'", cfg.Name)
 				}
 				toClose = append(toClose, closers...)
-				if closer, ok := mkvsFS.(io.Closer); ok {
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
+				}
+				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
 				}
-				vfs.fss[cfg.Name] = mkvsFS
+				vfs.fss[cfg.Name] = xFS
 			case "web":
 				if cfg.Web == nil {
 					closeAll()
@@ -108,6 +117,14 @@ func (vfs *vFSRW) init(config Config) error {
 				if err != nil {
 					closeAll()
 					return errors.Wrapf(err, "cannot create webfs in '%s'", cfg.Name)
+				}
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
 				}
 				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
@@ -123,6 +140,14 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create osfs in '%s'", cfg.Name)
 				}
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
+				}
 				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
 				}
@@ -136,6 +161,14 @@ func (vfs *vFSRW) init(config Config) error {
 				if err != nil {
 					closeAll()
 					return errors.Wrapf(err, "cannot create sftpfsrw in '%s'", cfg.Name)
+				}
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
 				}
 				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
@@ -151,6 +184,14 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
 				}
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
+				}
 				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
 				}
@@ -165,19 +206,13 @@ func (vfs *vFSRW) init(config Config) error {
 					closeAll()
 					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
 				}
-				if closer, ok := xFS.(io.Closer); ok {
-					toClose = append(toClose, closer)
-				}
-				vfs.fss[cfg.Name] = xFS
-			case "memfs":
-				if cfg.MemFS == nil {
-					closeAll()
-					return errors.Errorf("no memfs section for filesystem '%s'", cfg.Name)
-				}
-				xFS, err := vfs.newMemFS(name, cfg.MemFS, cfg.ReadOnly, logger)
-				if err != nil {
-					closeAll()
-					return errors.Wrapf(err, "cannot create memfs in '%s'", cfg.Name)
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
 				}
 				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
@@ -195,6 +230,14 @@ func (vfs *vFSRW) init(config Config) error {
 					}
 					closeAll()
 					return errors.Wrapf(err, "cannot create aferofs in '%s'", cfg.Name)
+				}
+				if cfg.ZipAsFolderCache > 0 {
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolderCache), cfg.ReadOnly, logger)
+					if err != nil {
+						closeAll()
+						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
+					}
+					xFS = zFS
 				}
 				if closer, ok := xFS.(io.Closer); ok {
 					toClose = append(toClose, closer)
@@ -344,12 +387,16 @@ func (vfs *vFSRW) String() string {
 }
 
 func (vfs *vFSRW) Stat(name string) (fs.FileInfo, error) {
+	vfs.logger.Debug().Msgf("VFS.Stat('%s')", name)
 	vFS, path, err := vfs.getFS(name)
 	if err != nil {
+		vfs.logger.Debug().Msgf("VFS.Stat('%s') -> getFS error: %v", name, err)
 		return nil, errors.WithStack(err)
 	}
+	vfs.logger.Debug().Msgf("VFS.Stat('%s') -> using FS for path '%s'", name, path)
 	data, err := fs.Stat(vFS, path)
 	if err != nil {
+		vfs.logger.Debug().Msgf("VFS.Stat('%s') -> fs.Stat('%s') error: %v", name, path, err)
 		return nil, errors.WithStack(err)
 	}
 	return data, nil
