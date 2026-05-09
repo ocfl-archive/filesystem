@@ -1,4 +1,4 @@
-package vfsrw
+package vfsrw_test
 
 import (
 	"archive/zip"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	sftp_test_server "github.com/JuniorGuerra/sftp_test_server"
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
@@ -44,7 +45,7 @@ func createCustomTestZip(name, content string) []byte {
 	return buf.Bytes()
 }
 
-func runZipAsFolderTest(t *testing.T, vfs VFSRW, fsName string) {
+func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	zipData := createTestZip()
 	var zipPath string
 	if fsName == "s3" {
@@ -167,15 +168,15 @@ func setupS3Server(t *testing.T) (endpoint string, bucket string, accessKey stri
 
 func TestZipAsFolder_Afero(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
-	cfg := Config{
-		"mem": &VFS{
+	cfg := vfsrw.Config{
+		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 10,
-			Afero:            &Afero{BaseDir: "mem://"},
+			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -190,15 +191,15 @@ func TestZipAsFolder_OS(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	t.Logf("Base Dir: %s", tempDir)
-	cfg := Config{
-		"os": &VFS{
+	cfg := vfsrw.Config{
+		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
 			ZipAsFolderCache: 10,
-			OS:               &OS{BaseDir: tempDir},
+			OS:               &vfsrw.OS{BaseDir: tempDir},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -215,12 +216,12 @@ func TestZipAsFolder_SFTP(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 	defer server.Stop()
 
-	cfg := Config{
-		"sftp": &VFS{
+	cfg := vfsrw.Config{
+		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
 			ZipAsFolderCache: 10,
-			SFTP: &SFTP{
+			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
 				Password: config.EnvString(password),
@@ -229,7 +230,7 @@ func TestZipAsFolder_SFTP(t *testing.T) {
 			},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -244,12 +245,12 @@ func TestZipAsFolder_S3(t *testing.T) {
 	endpoint, _, accessKey, secretKey, closer := setupS3Server(t)
 	defer closer()
 
-	cfg := Config{
-		"s3": &VFS{
+	cfg := vfsrw.Config{
+		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
 			ZipAsFolderCache: 10,
-			S3: &S3{
+			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(endpoint),
 				AccessKeyID:     config.EnvString(accessKey),
 				SecretAccessKey: config.EnvString(secretKey),
@@ -259,7 +260,7 @@ func TestZipAsFolder_S3(t *testing.T) {
 			},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -270,15 +271,15 @@ func TestZipAsFolder_S3(t *testing.T) {
 
 func TestZipAsFolder_ReadDir(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
-	cfg := Config{
-		"mem": &VFS{
+	cfg := vfsrw.Config{
+		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 10,
-			Afero:            &Afero{BaseDir: "mem://"},
+			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -368,24 +369,24 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 	s3Endpoint, _, s3AccessKey, s3SecretKey, s3Closer := setupS3Server(t)
 	defer s3Closer()
 
-	cfg := Config{
-		"mem": &VFS{
+	cfg := vfsrw.Config{
+		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 2,
-			Afero:            &Afero{BaseDir: "mem://"},
+			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
-		"os": &VFS{
+		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
 			ZipAsFolderCache: 2,
-			OS:               &OS{BaseDir: osTempDir},
+			OS:               &vfsrw.OS{BaseDir: osTempDir},
 		},
-		"sftp": &VFS{
+		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
 			ZipAsFolderCache: 2,
-			SFTP: &SFTP{
+			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
 				Password: config.EnvString(password),
@@ -393,11 +394,11 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 				Sessions: 3,
 			},
 		},
-		"s3": &VFS{
+		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
 			ZipAsFolderCache: 2,
-			S3: &S3{
+			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
 				AccessKeyID:     config.EnvString(s3AccessKey),
 				SecretAccessKey: config.EnvString(s3SecretKey),
@@ -407,7 +408,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 			},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -469,15 +470,15 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 
 func TestZipAsFolder_Stat(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
-	cfg := Config{
-		"mem": &VFS{
+	cfg := vfsrw.Config{
+		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 2,
-			Afero:            &Afero{BaseDir: "mem://"},
+			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -560,24 +561,24 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 	s3Endpoint, _, s3AccessKey, s3SecretKey, s3Closer := setupS3Server(t)
 	defer s3Closer()
 
-	cfg := Config{
-		"mem": &VFS{
+	cfg := vfsrw.Config{
+		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 20,
-			Afero:            &Afero{BaseDir: "mem://"},
+			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
-		"os": &VFS{
+		"os": &vfsrw.VFS{
 			Name:             "os",
 			Type:             "os",
 			ZipAsFolderCache: 20,
-			OS:               &OS{BaseDir: osTempDir},
+			OS:               &vfsrw.OS{BaseDir: osTempDir},
 		},
-		"sftp": &VFS{
+		"sftp": &vfsrw.VFS{
 			Name:             "sftp",
 			Type:             "sftp",
 			ZipAsFolderCache: 20,
-			SFTP: &SFTP{
+			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
 				Password: config.EnvString(password),
@@ -585,11 +586,11 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				Sessions: 5,
 			},
 		},
-		"s3": &VFS{
+		"s3": &vfsrw.VFS{
 			Name:             "s3",
 			Type:             "s3",
 			ZipAsFolderCache: 20,
-			S3: &S3{
+			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
 				AccessKeyID:     config.EnvString(s3AccessKey),
 				SecretAccessKey: config.EnvString(s3SecretKey),
@@ -599,7 +600,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 			},
 		},
 	}
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}

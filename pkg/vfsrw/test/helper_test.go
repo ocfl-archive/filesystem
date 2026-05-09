@@ -1,10 +1,12 @@
-package vfsrw
+package vfsrw_test
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 )
 
 func TestMatchPath(t *testing.T) {
@@ -116,7 +118,7 @@ func TestMatchPath(t *testing.T) {
 					t.Skip("Skipping Linux-specific test on Windows")
 				}
 			}
-			gotName, gotPath, err := matchPath(tt.input)
+			gotName, gotPath, err := vfsrw.MatchPath(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("matchPath() error = %v, wantErr %v", err, tt.wantErr)
 				return

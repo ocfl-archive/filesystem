@@ -1,4 +1,4 @@
-package vfsrw
+package vfsrw_test
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/rs/zerolog"
@@ -17,17 +18,17 @@ func TestVFS_AferoFS(t *testing.T) {
 	logger := zerolog.New(out)
 	var _logger zLogger.ZLogger = &logger
 
-	cfg := Config{
-		"testafero": &VFS{
+	cfg := vfsrw.Config{
+		"testafero": &vfsrw.VFS{
 			Name: "testafero",
 			Type: "afero",
-			Afero: &Afero{
+			Afero: &vfsrw.Afero{
 				BaseDir: "mem://",
 			},
 		},
 	}
 
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	assert.NoError(t, err)
 	defer vfs.Close()
 
@@ -96,31 +97,31 @@ func TestVFS_AferoFS_ComplexSchemes(t *testing.T) {
 	logger := zerolog.New(out)
 	var _logger zLogger.ZLogger = &logger
 
-	cfg := Config{
-		"mem1": &VFS{
+	cfg := vfsrw.Config{
+		"mem1": &vfsrw.VFS{
 			Name: "mem1",
 			Type: "afero",
-			Afero: &Afero{
+			Afero: &vfsrw.Afero{
 				BaseDir: "mem://",
 			},
 		},
-		"ro": &VFS{
+		"ro": &vfsrw.VFS{
 			Name: "ro",
 			Type: "afero",
-			Afero: &Afero{
+			Afero: &vfsrw.Afero{
 				BaseDir: "ro://?base=vfs://mem1/",
 			},
 		},
-		"cow": &VFS{
+		"cow": &vfsrw.VFS{
 			Name: "cow",
 			Type: "afero",
-			Afero: &Afero{
+			Afero: &vfsrw.Afero{
 				BaseDir: "cow://?base=vfs://ro/&layer=vfs://mem1/",
 			},
 		},
 	}
 
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	assert.NoError(t, err)
 	defer vfs.Close()
 
@@ -156,17 +157,17 @@ func TestVFS_AferoFS_FileInterfaces(t *testing.T) {
 	logger := zerolog.New(out)
 	var _logger zLogger.ZLogger = &logger
 
-	cfg := Config{
-		"testafero": &VFS{
+	cfg := vfsrw.Config{
+		"testafero": &vfsrw.VFS{
 			Name: "testafero",
 			Type: "afero",
-			Afero: &Afero{
+			Afero: &vfsrw.Afero{
 				BaseDir: "mem://",
 			},
 		},
 	}
 
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	assert.NoError(t, err)
 	defer vfs.Close()
 

@@ -1,4 +1,4 @@
-package vfsrw
+package vfsrw_test
 
 import (
 	"archive/zip"
@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/rs/zerolog"
@@ -18,15 +19,15 @@ import (
 func TestVFS_MemFS(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 
-	cfg := Config{
-		"testmem": &VFS{
+	cfg := vfsrw.Config{
+		"testmem": &vfsrw.VFS{
 			Name:  "testmem",
 			Type:  "afero",
-			Afero: &Afero{BaseDir: "mem://"},
+			Afero: &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
 
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -125,16 +126,16 @@ func TestVFS_MemFS(t *testing.T) {
 func TestVFS_MemFS_Zip(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 
-	cfg := Config{
-		"testmem": &VFS{
+	cfg := vfsrw.Config{
+		"testmem": &vfsrw.VFS{
 			Name:             "testmem",
 			Type:             "afero",
 			ZipAsFolderCache: 10,
-			Afero:            &Afero{BaseDir: "mem://"},
+			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
 
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -189,15 +190,15 @@ func TestVFS_MemFS_Zip(t *testing.T) {
 func TestVFS_MemFS_FileInterfaces(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 
-	cfg := Config{
-		"testmem": &VFS{
+	cfg := vfsrw.Config{
+		"testmem": &vfsrw.VFS{
 			Name:  "testmem",
 			Type:  "afero",
-			Afero: &Afero{BaseDir: "mem://"},
+			Afero: &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
 
-	vfs, err := NewFS(cfg, _logger)
+	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
 		t.Fatalf("failed to create vfs: %v", err)
 	}
@@ -266,6 +267,6 @@ func TestVFS_MemFS_FileInterfaces(t *testing.T) {
 }
 
 func TestVFS_MemFS_Interface(t *testing.T) {
-	var _ writefs.CreateFS = &vFSRW{}
-	var _ fs.FS = &vFSRW{}
+	var _ writefs.CreateFS = vfsrw.VFSRW(nil)
+	var _ fs.FS = vfsrw.VFSRW(nil)
 }
