@@ -1,10 +1,13 @@
 package vfsrw
 
 import (
+	"archive/zip"
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/je4/filesystem/v3/pkg/writefs"
@@ -13,14 +16,13 @@ import (
 )
 
 func TestVFS_MemFS(t *testing.T) {
-	logger := zerolog.New(os.Stderr)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 
 	cfg := Config{
 		"testmem": &VFS{
 			Name:  "testmem",
-			Type:  "memfs",
-			MemFS: &MemFS{},
+			Type:  "afero",
+			Afero: &Afero{BaseDir: "mem://"},
 		},
 	}
 
@@ -120,15 +122,78 @@ func TestVFS_MemFS(t *testing.T) {
 	}
 }
 
+func TestVFS_MemFS_Zip(t *testing.T) {
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+
+	cfg := Config{
+		"testmem": &VFS{
+			Name:             "testmem",
+			Type:             "afero",
+			ZipAsFolderCache: 10,
+			Afero:            &Afero{BaseDir: "mem://"},
+		},
+	}
+
+	vfs, err := NewFS(cfg, _logger)
+	if err != nil {
+		t.Fatalf("failed to create vfs: %v", err)
+	}
+	defer vfs.Close()
+
+	// Da zipasfolder schreibzugriff IN zips verweigert, aber das Erstellen der zip-Datei selbst erlaubt,
+	// befüllen wir das zip manuell und schreiben es dann ins VFS.
+	zipBuf := new(bytes.Buffer)
+	zw := zip.NewWriter(zipBuf)
+	fInZip, err := zw.Create("inner.txt")
+	if err != nil {
+		t.Fatalf("failed to create file in zip writer: %v", err)
+	}
+	_, err = fInZip.Write([]byte("inner data"))
+	if err != nil {
+		t.Fatalf("failed to write data to zip writer: %v", err)
+	}
+	zw.Close()
+
+	// Jetzt das Zip ins VFS schreiben (auf das Basis-FS 'testmem', zipasfolder lässt dies nun zu, da zipPath leer ist)
+	_, err = writefs.WriteFile(vfs, "vfs://testmem/test.zip", zipBuf.Bytes())
+	if err != nil {
+		t.Fatalf("failed to write zip file: %v", err)
+	}
+
+	testFile := "vfs://testmem/test.zip/inner.txt"
+	fi, err := vfs.Stat(testFile)
+	if err != nil {
+		t.Fatalf("Stat on file in zip failed: %v", err)
+	}
+	if fi.Name() != "inner.txt" {
+		t.Fatalf("expected 'inner.txt', got '%s'", fi.Name())
+	}
+
+	f, err := vfs.Open(testFile)
+	if err != nil {
+		t.Fatalf("failed to open file in zip: %v", err)
+	}
+	defer f.Close()
+
+	fi2, err := f.Stat()
+	if err != nil {
+		t.Fatalf("f.Stat on file in zip failed: %v", err)
+	}
+	if fi2.Size() != int64(len("inner data")) {
+		t.Fatalf("expected size %d, got %d", len("inner data"), fi2.Size())
+	}
+
+	fmt.Printf("VFS with Afero MemFS and Zip Support created and verified via Stat()\n")
+}
+
 func TestVFS_MemFS_FileInterfaces(t *testing.T) {
-	logger := zerolog.New(os.Stderr)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 
 	cfg := Config{
 		"testmem": &VFS{
 			Name:  "testmem",
-			Type:  "memfs",
-			MemFS: &MemFS{},
+			Type:  "afero",
+			Afero: &Afero{BaseDir: "mem://"},
 		},
 	}
 
@@ -185,6 +250,18 @@ func TestVFS_MemFS_FileInterfaces(t *testing.T) {
 	}
 	if n != 3 || string(bufAt) != "234" {
 		t.Fatalf("expected '234', got '%s'", string(bufAt))
+	}
+
+	// Test Stat
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if fi.Name() != filepath.Base(testFile) {
+		t.Fatalf("expected filename '%s', got '%s'", filepath.Base(testFile), fi.Name())
+	}
+	if fi.Size() != int64(len(testData)) {
+		t.Fatalf("expected size %d, got %d", len(testData), fi.Size())
 	}
 }
 
