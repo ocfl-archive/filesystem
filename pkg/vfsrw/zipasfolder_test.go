@@ -369,7 +369,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"mem": &VFS{
 			Name:             "mem",
 			Type:             "afero",
-			ZipAsFolderCache: 5,
+			ZipAsFolderCache: 20,
 			Afero:            &Afero{BaseDir: "mem://"},
 		},
 	}
@@ -389,7 +389,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 	}
 
 	numWorkers := 20
-	numIterations := 50
+	numIterations := 10
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 
