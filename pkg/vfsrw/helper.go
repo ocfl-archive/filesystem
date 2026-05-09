@@ -9,7 +9,7 @@ import (
 
 var matchPathRegexp = regexp.MustCompile(`^vfs://?([^/]+)(/(.*))?$`)
 
-func matchPath(vfsPath string) (name string, path string, err error) {
+func MatchPath(vfsPath string) (name string, path string, err error) {
 	if strings.HasPrefix(vfsPath, "vfs:/") {
 		matches := matchPathRegexp.FindStringSubmatch(vfsPath)
 		if matches == nil {

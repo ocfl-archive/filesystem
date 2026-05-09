@@ -332,8 +332,8 @@ func (vfs *vFSRW) Remove(name string) error {
 }
 
 func (vfs *vFSRW) Rename(oldPath, newPath string) error {
-	name1, _, _ := matchPath(oldPath)
-	name2, _, _ := matchPath(newPath)
+	name1, _, _ := MatchPath(oldPath)
+	name2, _, _ := MatchPath(newPath)
 	if name2 != name1 {
 		return errors.Errorf("cannot rename over multiple filesystems %s -> %s", name1, name2)
 	}
@@ -439,7 +439,7 @@ func (vfs *vFSRW) Open(vfsPath string) (fs.File, error) {
 }
 
 func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
-	name, path, err := matchPath(vfsPath)
+	name, path, err := MatchPath(vfsPath)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
@@ -463,7 +463,7 @@ func (vfs *vFSRW) Join(fsys fs.FS, elems ...string) string {
 }
 
 func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
-	srcName, srcPath, err := matchPath(src)
+	srcName, srcPath, err := MatchPath(src)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
@@ -471,7 +471,7 @@ func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 	if !ok {
 		return 0, errors.Errorf("vfs '%s' not configured for path '%s'", srcName, src)
 	}
-	dstName, dstPath, err := matchPath(dst)
+	dstName, dstPath, err := MatchPath(dst)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
