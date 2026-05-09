@@ -5,7 +5,7 @@ import (
 	"io/fs"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/zipfs"
+	"github.com/je4/filesystem/v4/pkg/zipfs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 )
 

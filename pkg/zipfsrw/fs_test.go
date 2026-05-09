@@ -5,11 +5,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"github.com/je4/filesystem/v3/pkg/osfsrw"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/filesystem/v3/pkg/zipfs"
-	"github.com/je4/utils/v2/pkg/checksum"
-	"github.com/rs/zerolog"
 	"io"
 	"io/fs"
 	"os"
@@ -17,6 +12,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/je4/filesystem/v4/pkg/osfsrw"
+	"github.com/je4/filesystem/v4/pkg/writefs"
+	"github.com/je4/filesystem/v4/pkg/zipfs"
+	"github.com/je4/utils/v2/pkg/checksum"
+	"github.com/rs/zerolog"
 )
 
 func tempFileName(prefix, suffix string) string {

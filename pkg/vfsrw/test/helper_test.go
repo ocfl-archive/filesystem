@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/je4/filesystem/v3/pkg/vfsrw"
+	"github.com/je4/filesystem/v4/pkg/vfsrw"
 )
 
 func TestMatchPath(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/filesystem/v3/pkg/zipasfolder"
+	"github.com/je4/filesystem/v4/pkg/writefs"
+	"github.com/je4/filesystem/v4/pkg/zipasfolder"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/osfsrw"
+	"github.com/je4/filesystem/v4/pkg/osfsrw"
 	"golang.org/x/sys/windows"
 )
 

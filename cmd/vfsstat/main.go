@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/je4/filesystem/v3/configs"
-	"github.com/je4/filesystem/v3/pkg/vfsrw"
+	"github.com/je4/filesystem/v4/configs"
+	"github.com/je4/filesystem/v4/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

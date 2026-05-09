@@ -6,7 +6,7 @@ import (
 	"io/fs"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v4/pkg/writefs"
 	genericproto "go.ub.unibas.ch/cloud/genericproto/v2/pkg/generic/proto"
 	"go.ub.unibas.ch/cloud/minikvstore/pkg/minikvstoreproto"
 )

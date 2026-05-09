@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/encrypt"
 	"github.com/je4/utils/v2/pkg/zLogger"

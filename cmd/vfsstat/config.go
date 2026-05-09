@@ -1,11 +1,12 @@
 package main
 
 import (
-	"emperror.dev/errors"
-	"github.com/BurntSushi/toml"
-	"github.com/je4/filesystem/v3/pkg/vfsrw"
 	"io/fs"
 	"os"
+
+	"emperror.dev/errors"
+	"github.com/BurntSushi/toml"
+	"github.com/je4/filesystem/v4/pkg/vfsrw"
 )
 
 type VFSStatConfig struct {

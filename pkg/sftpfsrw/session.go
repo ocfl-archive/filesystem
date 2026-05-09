@@ -1,13 +1,14 @@
 package sftpfsrw
 
 import (
+	"io/fs"
+	"path/filepath"
+
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"io/fs"
-	"path/filepath"
 )
 
 func NewSession(conn *ssh.Client, sftpFS *sftpFSRW, i uint, logger zLogger.ZLogger) error {
