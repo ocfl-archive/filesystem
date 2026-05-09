@@ -3,6 +3,7 @@ package zipasfolder
 import (
 	"io"
 	"io/fs"
+	"sync/atomic"
 
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v4/pkg/zipfs"
@@ -30,6 +31,11 @@ type zipFSCloser struct {
 	fs.FS
 	zipFile fs.File
 	logger  zLogger.ZLogger
+	closed  atomic.Bool
+}
+
+func (zipFS *zipFSCloser) IsClosed() bool {
+	return zipFS.closed.Load()
 }
 
 func (zipFS *zipFSCloser) Stat(name string) (fs.FileInfo, error) {
@@ -55,6 +61,18 @@ type IsRefCountFS interface {
 	RefCount() int32
 }
 
+func (zipFS *zipFSCloser) IncRef() {
+	if refFS, ok := zipFS.FS.(IsRefCountFS); ok {
+		refFS.IncRef()
+	}
+}
+
+func (zipFS *zipFSCloser) DecRef() {
+	if refFS, ok := zipFS.FS.(IsRefCountFS); ok {
+		refFS.DecRef()
+	}
+}
+
 func (zipFS *zipFSCloser) RefCount() int32 {
 	if refFS, ok := zipFS.FS.(IsRefCountFS); ok {
 		return refFS.RefCount()
@@ -63,6 +81,7 @@ func (zipFS *zipFSCloser) RefCount() int32 {
 }
 
 func (zipFS *zipFSCloser) Close() error {
+	zipFS.closed.Store(true)
 	return errors.WithStack(zipFS.zipFile.Close())
 }
 
@@ -70,4 +89,5 @@ var (
 	_ fs.FS        = &zipFSCloser{}
 	_ fs.ReadDirFS = &zipFSCloser{}
 	_ fs.StatFS    = &zipFSCloser{}
+	_ IsRefCountFS = &zipFSCloser{}
 )
