@@ -5,14 +5,13 @@ import "go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 import certconfig "github.com/je4/trustutil/v2/pkg/config"
 
 type SFTP struct {
-	Address          config.EnvString `toml:"address"`
-	KnownHosts       []string         `toml:"knownhosts"`
-	BaseDir          string           `toml:"basedir"`
-	Sessions         uint             `toml:"sessions"`
-	User             config.EnvString `toml:"user"`
-	Password         config.EnvString `toml:"password"`
-	PrivateKey       []string         `toml:"privatekey"`
-	ZipAsFolderCache uint             `toml:"zipasfoldercache"`
+	Address    config.EnvString `toml:"address"`
+	KnownHosts []string         `toml:"knownhosts"`
+	BaseDir    string           `toml:"basedir"`
+	Sessions   uint             `toml:"sessions"`
+	User       config.EnvString `toml:"user"`
+	Password   config.EnvString `toml:"password"`
+	PrivateKey []string         `toml:"privatekey"`
 }
 
 type Web struct {
@@ -21,8 +20,7 @@ type Web struct {
 	TLSInsecureSkipVerify bool                `toml:"tls_insecure_skip_verify"`
 }
 type OS struct {
-	BaseDir          string `toml:"basedir"`
-	ZipAsFolderCache uint   `toml:"zipasfoldercache"`
+	BaseDir string `toml:"basedir"`
 }
 
 type Remote struct {
@@ -35,17 +33,16 @@ type Remote struct {
 }
 
 type S3 struct {
-	AccessKeyID      config.EnvString `toml:"accesskeyid"`
-	SecretAccessKey  config.EnvString `toml:"secretaccesskey"`
-	Endpoint         config.EnvString `toml:"endpoint"`
-	Region           config.EnvString `toml:"region"`
-	UseSSL           bool             `toml:"usessl"`
-	Debug            bool             `toml:"debug"`
-	CAPEM            string           `toml:"capem"`
-	BaseUrl          string           `toml:"baseurl"`
-	ZipAsFolderCache uint             `toml:"zipasfoldercache"`
-	DNSNetwork       string           `toml:"dnsnetwork"`
-	DNSAddress       string           `toml:"dnsaddress"`
+	AccessKeyID     config.EnvString `toml:"accesskeyid"`
+	SecretAccessKey config.EnvString `toml:"secretaccesskey"`
+	Endpoint        config.EnvString `toml:"endpoint"`
+	Region          config.EnvString `toml:"region"`
+	UseSSL          bool             `toml:"usessl"`
+	Debug           bool             `toml:"debug"`
+	CAPEM           string           `toml:"capem"`
+	BaseUrl         string           `toml:"baseurl"`
+	DNSNetwork      string           `toml:"dnsnetwork"`
+	DNSAddress      string           `toml:"dnsaddress"`
 }
 
 type MiniKVStore struct {
@@ -57,25 +54,22 @@ type MiniKVStore struct {
 	Dir                     string          `toml:"dir"`
 }
 
-type MemFS struct {
-}
-
 type Afero struct {
 	BaseDir string `toml:"basedir"`
 }
 
 type VFS struct {
-	Name        string       `toml:"name"`
-	Type        string       `toml:"type"`
-	ReadOnly    bool         `toml:"readonly"`
-	S3          *S3          `toml:"s3,omitempty"`
-	OS          *OS          `toml:"os,omitempty"`
-	SFTP        *SFTP        `toml:"sftp,omitempty"`
-	Remote      *Remote      `toml:"remote,omitempty"`
-	MiniKVStore *MiniKVStore `toml:"minikvstore,omitempty"`
-	Web         *Web         `toml:"web,omitempty"`
-	MemFS       *MemFS       `toml:"memfs,omitempty"`
-	Afero       *Afero       `toml:"afero,omitempty"`
+	Name             string       `toml:"name"`
+	Type             string       `toml:"type"`
+	ReadOnly         bool         `toml:"readonly"`
+	ZipAsFolderCache uint         `toml:"zipasfoldercache"`
+	S3               *S3          `toml:"s3,omitempty"`
+	OS               *OS          `toml:"os,omitempty"`
+	SFTP             *SFTP        `toml:"sftp,omitempty"`
+	Remote           *Remote      `toml:"remote,omitempty"`
+	MiniKVStore      *MiniKVStore `toml:"minikvstore,omitempty"`
+	Web              *Web         `toml:"web,omitempty"`
+	Afero            *Afero       `toml:"afero,omitempty"`
 }
 
 type Config map[string]*VFS
