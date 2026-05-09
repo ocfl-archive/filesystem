@@ -1,6 +1,7 @@
 package zipasfolder
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -91,7 +92,7 @@ func (fsys *zipAsFolderFS) Fullpath(name string) (string, error) {
 }
 
 func (fsys *zipAsFolderFS) String() string {
-	return "zipAsFolderFS"
+	return fmt.Sprintf("zipAsFolderFS(%s)", fsys.baseFS)
 }
 
 // CReate creates a new file
