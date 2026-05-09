@@ -8,8 +8,11 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
+	sftp_test_server "github.com/JuniorGuerra/sftp_test_server"
 	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/rs/zerolog"
 )
@@ -37,8 +40,103 @@ func createCustomTestZip(name, content string) []byte {
 	return buf.Bytes()
 }
 
+func runZipAsFolderTest(t *testing.T, vfs VFSRW, fsName string) {
+	zipData := createTestZip()
+	zipPath := fmt.Sprintf("vfs://%s/test.zip", fsName)
+
+	if _, err := writefs.WriteFile(vfs, zipPath, zipData); err != nil {
+		t.Fatalf("failed to write zip file: %v", err)
+	}
+
+	// Test access into zip
+	testFile := zipPath + "/test.txt"
+	data, err := vfs.ReadFile(testFile)
+	if err != nil {
+		t.Fatalf("failed to read file in zip: %v", err)
+	}
+	if string(data) != "hello zip" {
+		t.Fatalf("expected 'hello zip', got '%s'", string(data))
+	}
+
+	deepFile := zipPath + "/sub/deep/deeptest.txt"
+	data, err = vfs.ReadFile(deepFile)
+	if err != nil {
+		t.Fatalf("failed to read deep file in zip: %v", err)
+	}
+	if string(data) != "hello deep zip" {
+		t.Fatalf("expected 'hello deep zip', got '%s'", string(data))
+	}
+
+	// Test ReadDir
+	t.Logf("ReadDir %s", zipPath)
+	entries, err := vfs.ReadDir(zipPath)
+	if err != nil {
+		t.Fatalf("ReadDir on zip failed: %v", err)
+	}
+	foundSub := false
+	for _, e := range entries {
+		if e.Name() == "sub" {
+			foundSub = true
+			if !e.IsDir() {
+				t.Errorf("expected 'sub' to be a directory")
+			}
+		}
+	}
+	if !foundSub {
+		t.Errorf("'sub' directory not found in zip")
+	}
+
+	// Test Stat on zip itself as folder
+	t.Logf("stating %s", zipPath)
+	fi, err := vfs.Stat(zipPath)
+	if err != nil {
+		// Try with trailing slash
+		t.Logf("stat on %s failed: %v, trying with trailing slash", zipPath, err)
+		fi, err = vfs.Stat(zipPath + "/")
+	}
+	if err != nil {
+		t.Fatalf("stat on zip failed: %v", err)
+	}
+	if !fi.IsDir() {
+		t.Errorf("expected zip to be treated as directory")
+	}
+}
+
+func setupSFTPServer(t *testing.T, port int) (server *sftp_test_server.SFTPServer, tempDir string, user, password string) {
+	tempDir, err := os.MkdirTemp("", "sftp_test_server")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+
+	user = "testuser"
+	password = "testpass"
+	server, err = sftp_test_server.NewSFTPServerLocal(user, password, port, tempDir)
+	if err != nil {
+		os.RemoveAll(tempDir)
+		t.Fatalf("failed to create sftp server: %v", err)
+	}
+
+	go func() {
+		if err := server.Start(); err != nil {
+			t.Logf("sftp server stopped: %v", err)
+		}
+	}()
+
+	// Give the server a moment to start
+	time.Sleep(200 * time.Millisecond)
+	return server, tempDir, user, password
+}
+
+func setupOSTempDir(t *testing.T) string {
+	tempDir, err := os.MkdirTemp("", "vfs_os_test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	return filepath.ToSlash(tempDir)
+}
+
 func TestZipAsFolder_Afero(t *testing.T) {
-	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
 	cfg := Config{
 		"mem": &VFS{
 			Name:             "mem",
@@ -53,39 +151,14 @@ func TestZipAsFolder_Afero(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	zipData := createTestZip()
-
-	if _, err := writefs.WriteFile(vfs, "vfs://mem/test.zip", zipData); err != nil {
-		t.Fatalf("failed to write zip file: %v", err)
-	}
-
-	// Test access into zip
-	data, err := vfs.ReadFile("vfs://mem/test.zip/test.txt")
-	if err != nil {
-		t.Fatalf("failed to read file in zip: %v", err)
-	}
-	if string(data) != "hello zip" {
-		t.Fatalf("expected 'hello zip', got '%s'", string(data))
-	}
-
-	data, err = vfs.ReadFile("vfs://mem/test.zip/sub/deep/deeptest.txt")
-	if err != nil {
-		t.Fatalf("failed to read deep file in zip: %v", err)
-	}
-	if string(data) != "hello deep zip" {
-		t.Fatalf("expected 'hello deep zip', got '%s'", string(data))
-	}
+	runZipAsFolderTest(t, vfs, "mem")
 }
 
 func TestZipAsFolder_OS(t *testing.T) {
-	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
-	tempDir, err := os.MkdirTemp("", "vfs_os_test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+	tempDir := setupOSTempDir(t)
 	defer os.RemoveAll(tempDir)
 
-	tempDir = filepath.ToSlash(tempDir)
 	t.Logf("Base Dir: %s", tempDir)
 	cfg := Config{
 		"os": &VFS{
@@ -101,59 +174,42 @@ func TestZipAsFolder_OS(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	zipData := createTestZip()
-
-	if _, err := writefs.WriteFile(vfs, "vfs://os/test.zip", zipData); err != nil {
-		t.Fatalf("failed to write zip file: %v", err)
-	}
-
-	// Test access into zip
-	t.Logf("reading vfs://os/test.zip/test.txt")
-	fi_zip, err_zip := vfs.Stat("vfs://os/test.zip")
-	t.Logf("Stat('vfs://os/test.zip') -> %v, %v", fi_zip, err_zip)
-
-	fi_direct, err_direct := os.Stat(filepath.Join(tempDir, "test.zip"))
-	t.Logf("os.Stat('%s') -> %v, %v", filepath.Join(tempDir, "test.zip"), fi_direct, err_direct)
-
-	data, err := vfs.ReadFile("vfs://os/test.zip/test.txt")
-	if err != nil {
-		t.Fatalf("failed to read file in zip: %v", err)
-	}
-	if string(data) != "hello zip" {
-		t.Fatalf("expected 'hello zip', got '%s'", string(data))
-	}
-
-	t.Logf("reading vfs://os/test.zip/sub/deep/deeptest.txt")
-	data, err = vfs.ReadFile("vfs://os/test.zip/sub/deep/deeptest.txt")
-	if err != nil {
-		t.Fatalf("failed to read deep file in zip: %v", err)
-	}
-	if string(data) != "hello deep zip" {
-		t.Fatalf("expected 'hello deep zip', got '%s'", string(data))
-	}
-
-	// Test Stat on zip itself as folder
-	t.Logf("stating vfs://os/test.zip")
-	fi, err := vfs.Stat("vfs://os/test.zip")
-	if err != nil {
-		// Try with trailing slash
-		t.Logf("stat on vfs://os/test.zip failed: %v, trying with trailing slash", err)
-		fi, err = vfs.Stat("vfs://os/test.zip/")
-	}
-	if err != nil {
-		t.Fatalf("stat on zip failed: %v", err)
-	}
-	if !fi.IsDir() {
-		t.Errorf("expected zip to be treated as directory")
-	}
+	runZipAsFolderTest(t, vfs, "os")
 }
 
 func TestZipAsFolder_SFTP(t *testing.T) {
-	t.Skip("SFTP test requires a running SFTP server")
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	port := 22222
+	server, tempDir, user, password := setupSFTPServer(t, port)
+	defer os.RemoveAll(tempDir)
+	defer server.Stop()
+
+	cfg := Config{
+		"sftp": &VFS{
+			Name:             "sftp",
+			Type:             "sftp",
+			ZipAsFolderCache: 10,
+			SFTP: &SFTP{
+				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
+				User:     config.EnvString(user),
+				Password: config.EnvString(password),
+				BaseDir:  "/",
+				Sessions: 3,
+			},
+		},
+	}
+	vfs, err := NewFS(cfg, _logger)
+	if err != nil {
+		t.Fatalf("failed to create vfs: %v", err)
+	}
+	defer vfs.Close()
+
+	runZipAsFolderTest(t, vfs, "sftp")
 }
 
 func TestZipAsFolder_ReadDir(t *testing.T) {
-	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
 	cfg := Config{
 		"mem": &VFS{
 			Name:             "mem",
@@ -236,13 +292,42 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 }
 
 func TestZipAsFolder_CacheLimit(t *testing.T) {
-	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	// 1. SFTP Setup
+	port := 22224
+	server, sftpTempDir, user, password := setupSFTPServer(t, port)
+	defer os.RemoveAll(sftpTempDir)
+	defer server.Stop()
+
+	// 2. OS Setup
+	osTempDir := setupOSTempDir(t)
+	defer os.RemoveAll(osTempDir)
+
 	cfg := Config{
 		"mem": &VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 2,
 			Afero:            &Afero{BaseDir: "mem://"},
+		},
+		"os": &VFS{
+			Name:             "os",
+			Type:             "os",
+			ZipAsFolderCache: 2,
+			OS:               &OS{BaseDir: osTempDir},
+		},
+		"sftp": &VFS{
+			Name:             "sftp",
+			Type:             "sftp",
+			ZipAsFolderCache: 2,
+			SFTP: &SFTP{
+				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
+				User:     config.EnvString(user),
+				Password: config.EnvString(password),
+				BaseDir:  "/",
+				Sessions: 3,
+			},
 		},
 	}
 	vfs, err := NewFS(cfg, _logger)
@@ -252,43 +337,50 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 	defer vfs.Close()
 
 	zipData := createTestZip()
-	if _, err := writefs.WriteFile(vfs, "vfs://mem/1.zip", zipData); err != nil {
-		t.Fatalf("failed to write zip file 1: %v", err)
-	}
-	if _, err := writefs.WriteFile(vfs, "vfs://mem/2.zip", zipData); err != nil {
-		t.Fatalf("failed to write zip file 2: %v", err)
-	}
-	if _, err := writefs.WriteFile(vfs, "vfs://mem/3.zip", zipData); err != nil {
-		t.Fatalf("failed to write zip file 3: %v", err)
-	}
 
-	// Zugriff auf 1.zip -> Geladen (Cache: [1])
-	t.Log("Accessing 1.zip")
-	if _, err := vfs.ReadFile("vfs://mem/1.zip/test.txt"); err != nil {
-		t.Fatalf("failed to read 1.zip: %v", err)
-	}
+	backends := []string{"mem", "os", "sftp"}
 
-	// Zugriff auf 2.zip -> Geladen (Cache: [1, 2])
-	t.Log("Accessing 2.zip")
-	if _, err := vfs.ReadFile("vfs://mem/2.zip/test.txt"); err != nil {
-		t.Fatalf("failed to read 2.zip: %v", err)
-	}
+	for _, be := range backends {
+		t.Run("Backend_"+be, func(t *testing.T) {
+			if _, err := writefs.WriteFile(vfs, fmt.Sprintf("vfs://%s/1.zip", be), zipData); err != nil {
+				t.Fatalf("failed to write zip file 1: %v", err)
+			}
+			if _, err := writefs.WriteFile(vfs, fmt.Sprintf("vfs://%s/2.zip", be), zipData); err != nil {
+				t.Fatalf("failed to write zip file 2: %v", err)
+			}
+			if _, err := writefs.WriteFile(vfs, fmt.Sprintf("vfs://%s/3.zip", be), zipData); err != nil {
+				t.Fatalf("failed to write zip file 3: %v", err)
+			}
 
-	// Zugriff auf 3.zip -> Geladen, 1.zip sollte verdrängt werden (Cache: [2, 3])
-	t.Log("Accessing 3.zip (should evict 1.zip)")
-	if _, err := vfs.ReadFile("vfs://mem/3.zip/test.txt"); err != nil {
-		t.Fatalf("failed to read 3.zip: %v", err)
-	}
+			// Zugriff auf 1.zip -> Geladen (Cache: [1])
+			t.Logf("[%s] Accessing 1.zip", be)
+			if _, err := vfs.ReadFile(fmt.Sprintf("vfs://%s/1.zip/test.txt", be)); err != nil {
+				t.Fatalf("failed to read 1.zip: %v", err)
+			}
 
-	// Erneuter Zugriff auf 1.zip -> Sollte neu geladen werden (Cache: [3, 1], 2.zip verdrängt)
-	t.Log("Accessing 1.zip again (should evict 2.zip)")
-	if _, err := vfs.ReadFile("vfs://mem/1.zip/test.txt"); err != nil {
-		t.Fatalf("failed to read 1.zip again: %v", err)
+			// Zugriff auf 2.zip -> Geladen (Cache: [1, 2])
+			t.Logf("[%s] Accessing 2.zip", be)
+			if _, err := vfs.ReadFile(fmt.Sprintf("vfs://%s/2.zip/test.txt", be)); err != nil {
+				t.Fatalf("failed to read 2.zip: %v", err)
+			}
+
+			// Zugriff auf 3.zip -> Geladen, 1.zip sollte verdrängt werden (Cache: [2, 3])
+			t.Logf("[%s] Accessing 3.zip (should evict 1.zip)", be)
+			if _, err := vfs.ReadFile(fmt.Sprintf("vfs://%s/3.zip/test.txt", be)); err != nil {
+				t.Fatalf("failed to read 3.zip: %v", err)
+			}
+
+			// Erneuter Zugriff auf 1.zip -> Sollte neu geladen werden (Cache: [3, 1], 2.zip verdrängt)
+			t.Logf("[%s] Accessing 1.zip again (should evict 2.zip)", be)
+			if _, err := vfs.ReadFile(fmt.Sprintf("vfs://%s/1.zip/test.txt", be)); err != nil {
+				t.Fatalf("failed to read 1.zip again: %v", err)
+			}
+		})
 	}
 }
 
 func TestZipAsFolder_Stat(t *testing.T) {
-	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
 	cfg := Config{
 		"mem": &VFS{
 			Name:             "mem",
@@ -364,13 +456,42 @@ func TestZipAsFolder_Stat(t *testing.T) {
 }
 
 func TestZipAsFolder_Concurrency(t *testing.T) {
-	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	// 1. SFTP Setup
+	port := 22223 // Anders als in anderen Tests
+	server, sftpTempDir, user, password := setupSFTPServer(t, port)
+	defer os.RemoveAll(sftpTempDir)
+	defer server.Stop()
+
+	// 2. OS Setup
+	osTempDir := setupOSTempDir(t)
+	defer os.RemoveAll(osTempDir)
+
 	cfg := Config{
 		"mem": &VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 20,
 			Afero:            &Afero{BaseDir: "mem://"},
+		},
+		"os": &VFS{
+			Name:             "os",
+			Type:             "os",
+			ZipAsFolderCache: 20,
+			OS:               &OS{BaseDir: osTempDir},
+		},
+		"sftp": &VFS{
+			Name:             "sftp",
+			Type:             "sftp",
+			ZipAsFolderCache: 20,
+			SFTP: &SFTP{
+				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
+				User:     config.EnvString(user),
+				Password: config.EnvString(password),
+				BaseDir:  "/",
+				Sessions: 5,
+			},
 		},
 	}
 	vfs, err := NewFS(cfg, _logger)
@@ -379,17 +500,21 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	numZips := 10
+	backends := []string{"mem", "os", "sftp"}
+	numZips := 5
 	zipData := createCustomTestZip("test.txt", "hello world")
-	for i := range numZips {
-		name := fmt.Sprintf("vfs://mem/test%d.zip", i)
-		if _, err := writefs.WriteFile(vfs, name, zipData); err != nil {
-			t.Fatalf("failed to write zip file %d: %v", i, err)
+
+	for _, be := range backends {
+		for i := range numZips {
+			name := fmt.Sprintf("vfs://%s/test%d.zip", be, i)
+			if _, err := writefs.WriteFile(vfs, name, zipData); err != nil {
+				t.Fatalf("failed to write zip file %s: %v", name, err)
+			}
 		}
 	}
 
-	numWorkers := 20
-	numIterations := 10
+	numWorkers := 30
+	numIterations := 15
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 
@@ -397,8 +522,10 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		go func(workerID int) {
 			defer wg.Done()
 			for j := range numIterations {
+				beIdx := (workerID + j) % len(backends)
+				backend := backends[beIdx]
 				zipID := (workerID + j) % numZips
-				path := fmt.Sprintf("vfs://mem/test%d.zip/test.txt", zipID)
+				path := fmt.Sprintf("vfs://%s/test%d.zip/test.txt", backend, zipID)
 
 				// ReadFile
 				data, err := vfs.ReadFile(path)
@@ -419,7 +546,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				}
 
 				// ReadDir
-				dirPath := fmt.Sprintf("vfs://mem/test%d.zip", zipID)
+				dirPath := fmt.Sprintf("vfs://%s/test%d.zip", backend, zipID)
 				_, err = vfs.ReadDir(dirPath)
 				if err != nil {
 					t.Errorf("Worker %d: ReadDir failed for %s: %v", workerID, dirPath, err)

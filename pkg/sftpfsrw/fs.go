@@ -124,8 +124,8 @@ func (sftpFS *sftpFSRW) Create(path string) (writefs.FileWrite, error) {
 	}
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
 	fp, err := sess.Create(fullpath)
-
 	if err != nil {
+		sftpFS.closeSession(sess)
 		return nil, errors.Wrapf(err, "cannot create '%s'", fullpath)
 	}
 	return fp, nil
@@ -142,6 +142,7 @@ func (sftpFS *sftpFSRW) Append(path string) (writefs.FileWrite, error) {
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, path))
 	fp, err := sess.OpenFile(fullpath, os.O_APPEND|os.O_WRONLY)
 	if err != nil {
+		sftpFS.closeSession(sess)
 		return nil, errors.Wrapf(err, "cannot open '%s'", fullpath)
 	}
 	return fp, nil
@@ -187,6 +188,7 @@ func (sftpFS *sftpFSRW) Stat(name string) (fs.FileInfo, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get sftp session")
 	}
+	defer sftpFS.closeSession(sess)
 	fullpath := filepath.ToSlash(filepath.Join(sftpFS.baseDir, name))
 	fi, err := sess.Stat(fullpath)
 	if err != nil {
