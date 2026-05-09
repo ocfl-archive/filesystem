@@ -54,6 +54,10 @@ type sftpFSRW struct {
 	readOnly     bool
 }
 
+func (sftpFS *sftpFSRW) IsWriteable(path string) bool {
+	return sftpFS.readOnly == false
+}
+
 func (sftpFS *sftpFSRW) Equal(fsys fs.FS) bool {
 	if sftpFS2, ok := fsys.(*sftpFSRW); ok {
 		return sftpFS.addr == sftpFS2.addr && sftpFS.baseDir == sftpFS2.baseDir && sftpFS.user == sftpFS2.user
@@ -244,17 +248,18 @@ func (sftpFS *sftpFSRW) Close() error {
 }
 
 var (
-	_ fmt.Stringer       = (*sftpFSRW)(nil)
-	_ writefs.CreateFS   = (*sftpFSRW)(nil)
-	_ writefs.AppendFS   = (*sftpFSRW)(nil)
-	_ writefs.MkDirFS    = (*sftpFSRW)(nil)
-	_ writefs.RenameFS   = (*sftpFSRW)(nil)
-	_ writefs.RemoveFS   = (*sftpFSRW)(nil)
-	_ writefs.CloseFS    = (*sftpFSRW)(nil)
-	_ writefs.FullpathFS = (*sftpFSRW)(nil)
-	_ writefs.EqualFS    = (*sftpFSRW)(nil)
-	_ fs.FS              = (*sftpFSRW)(nil)
-	_ fs.ReadDirFS       = (*sftpFSRW)(nil)
-	_ fs.ReadFileFS      = (*sftpFSRW)(nil)
-	_ fs.StatFS          = (*sftpFSRW)(nil)
+	_ fmt.Stringer          = (*sftpFSRW)(nil)
+	_ writefs.CreateFS      = (*sftpFSRW)(nil)
+	_ writefs.AppendFS      = (*sftpFSRW)(nil)
+	_ writefs.MkDirFS       = (*sftpFSRW)(nil)
+	_ writefs.RenameFS      = (*sftpFSRW)(nil)
+	_ writefs.RemoveFS      = (*sftpFSRW)(nil)
+	_ writefs.CloseFS       = (*sftpFSRW)(nil)
+	_ writefs.FullpathFS    = (*sftpFSRW)(nil)
+	_ writefs.EqualFS       = (*sftpFSRW)(nil)
+	_ writefs.IsWriteableFS = (*sftpFSRW)(nil)
+	_ fs.FS                 = (*sftpFSRW)(nil)
+	_ fs.ReadDirFS          = (*sftpFSRW)(nil)
+	_ fs.ReadFileFS         = (*sftpFSRW)(nil)
+	_ fs.StatFS             = (*sftpFSRW)(nil)
 )

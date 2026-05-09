@@ -2,6 +2,7 @@ package webFS
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
+	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
@@ -44,6 +46,10 @@ type webFSRW struct {
 	logger                zLogger.ZLogger
 	header                http.Header
 	tlsInsecureSkipVerify bool
+}
+
+func (d *webFSRW) IsWriteable(path string) bool {
+	return false
 }
 
 func (d *webFSRW) Copy(src, dst string) (int64, error) {
@@ -110,6 +116,39 @@ func (d *webFSRW) query(urlStr string) (*http.Response, error) {
 	return resp, nil
 }
 
+func (d *webFSRW) queryRange(urlStr string, start, end int64) (*http.Response, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot create request for '%s'", urlStr)
+	}
+	for k, vs := range d.header {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
+	if end >= 0 {
+		req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", start, end))
+	} else {
+		req.Header.Add("Range", fmt.Sprintf("bytes=%d-", start))
+	}
+
+	if d.tlsInsecureSkipVerify {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot open file '%s'", urlStr)
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		resp.Body.Close()
+		return nil, errors.Errorf("cannot open file '%s': %s", urlStr, resp.Status)
+	}
+	return resp, nil
+}
+
 func (d *webFSRW) Open(name string) (fs.File, error) {
 	urlStr := d.buildURL(name)
 	resp, err := d.query(urlStr)
@@ -118,6 +157,8 @@ func (d *webFSRW) Open(name string) (fs.File, error) {
 	}
 	return &file{
 		Response: resp,
+		fs:       d,
+		url:      urlStr,
 	}, nil
 }
 
@@ -129,6 +170,8 @@ func (d *webFSRW) Stat(name string) (fs.FileInfo, error) {
 	}
 	return &file{
 		Response: resp,
+		fs:       d,
+		url:      urlStr,
 	}, nil
 }
 
@@ -150,7 +193,8 @@ func (d *webFSRW) Close() error {
 }
 
 var (
-	_ fs.FS         = &webFSRW{}
-	_ fs.ReadFileFS = &webFSRW{}
-	_ fs.StatFS     = &webFSRW{}
+	_ writefs.IsWriteableFS = &webFSRW{}
+	_ fs.FS                 = &webFSRW{}
+	_ fs.ReadFileFS         = &webFSRW{}
+	_ fs.StatFS             = &webFSRW{}
 )

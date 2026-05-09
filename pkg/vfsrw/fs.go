@@ -27,6 +27,7 @@ type VFSRW interface {
 	writefs.RemoveFS
 	writefs.CloseFS
 	writefs.EqualFS
+	writefs.IsWriteableFS
 	fs.FS
 	fs.ReadDirFS
 	fs.ReadFileFS
@@ -255,6 +256,14 @@ type vFSRW struct {
 	miniResolverClientTLS    *tls.Config
 	miniResolverClientLoader loader.Loader
 	logger                   zLogger.ZLogger
+}
+
+func (vfs *vFSRW) IsWriteable(name string) bool {
+	vFS, path, err := vfs.getFS(name)
+	if err != nil {
+		return false
+	}
+	return writefs.IsWriteable(vFS, path)
 }
 
 func (vfs *vFSRW) Get(name string, readOnly bool) (fs.FS, error) {

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -26,7 +27,7 @@ func createTestZip() []byte {
 	buf := new(bytes.Buffer)
 	zw := zip.NewWriter(buf)
 	f, _ := zw.Create("test.txt")
-	f.Write([]byte("hello zip"))
+	f.Write([]byte("hello zip test.zip"))
 	f2, _ := zw.Create("sub/subtest.txt")
 	f2.Write([]byte("hello sub zip"))
 	f3, _ := zw.Create("sub/deep/deeptest.txt")
@@ -45,17 +46,27 @@ func createCustomTestZip(name, content string) []byte {
 	return buf.Bytes()
 }
 
+var (
+	zipData1 = createCustomTestZip("test.txt", "hello zip test1.zip")
+	zipData2 = createCustomTestZip("test.txt", "hello zip test2.zip")
+	zipData3 = createCustomTestZip("test.txt", "hello zip test3.zip")
+)
+
 func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	zipData := createTestZip()
 	var zipPath string
 	if fsName == "s3" {
 		zipPath = fmt.Sprintf("vfs://%s/testbucket/test.zip", fsName)
+	} else if fsName == "web" {
+		zipPath = fmt.Sprintf("vfs://%s/test.zip", fsName)
 	} else {
 		zipPath = fmt.Sprintf("vfs://%s/test.zip", fsName)
 	}
 
-	if _, err := writefs.WriteFile(vfs, zipPath, zipData); err != nil {
-		t.Fatalf("failed to write zip file: %v", err)
+	if fsName != "web" {
+		if _, err := writefs.WriteFile(vfs, zipPath, zipData); err != nil {
+			t.Fatalf("failed to write zip file: %v", err)
+		}
 	}
 
 	// Test access into zip
@@ -64,8 +75,8 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	if err != nil {
 		t.Fatalf("failed to read file in zip: %v", err)
 	}
-	if string(data) != "hello zip" {
-		t.Fatalf("expected 'hello zip', got '%s'", string(data))
+	if string(data) != "hello zip test.zip" {
+		t.Fatalf("expected 'hello zip test.zip', got '%s'", string(data))
 	}
 
 	deepFile := zipPath + "/sub/deep/deeptest.txt"
@@ -269,14 +280,103 @@ func TestZipAsFolder_S3(t *testing.T) {
 	runZipAsFolderTest(t, vfs, "s3")
 }
 
+func TestZipAsFolder_WebFS(t *testing.T) {
+	zipData := createTestZip()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, "test.zip", time.Now(), bytes.NewReader(zipData))
+	}))
+	defer ts.Close()
+
+	logger := zerolog.New(os.Stderr)
+	var _logger zLogger.ZLogger = &logger
+	vfs, err := vfsrw.NewFS(vfsrw.Config{
+		"web": &vfsrw.VFS{
+			Name:             "web",
+			Type:             "web",
+			ReadOnly:         true,
+			ZipAsFolderCache: 10,
+			Web: &vfsrw.Web{
+				BaseURI: ts.URL + "/%%PATH%%",
+			},
+		},
+	}, _logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	runZipAsFolderTest(t, vfs, "web")
+}
+
 func TestZipAsFolder_ReadDir(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	// 1. SFTP Setup
+	port := 22223
+	server, sftpTempDir, user, password := setupSFTPServer(t, port)
+	defer os.RemoveAll(sftpTempDir)
+	defer server.Stop()
+
+	// 2. OS Setup
+	osTempDir := setupOSTempDir(t)
+	defer os.RemoveAll(osTempDir)
+
+	// 3. S3 Setup
+	s3Endpoint, _, s3AccessKey, s3SecretKey, s3Closer := setupS3Server(t)
+	defer s3Closer()
+
+	// 4. Web Setup
+	zipData := createTestZip()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Just serve the same zip for any request
+		http.ServeContent(w, r, r.URL.Path, time.Now(), bytes.NewReader(zipData))
+	}))
+	defer ts.Close()
+
 	cfg := vfsrw.Config{
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
 			Type:             "afero",
 			ZipAsFolderCache: 10,
 			Afero:            &vfsrw.Afero{BaseDir: "mem://"},
+		},
+		"os": &vfsrw.VFS{
+			Name:             "os",
+			Type:             "os",
+			ZipAsFolderCache: 10,
+			OS:               &vfsrw.OS{BaseDir: osTempDir},
+		},
+		"sftp": &vfsrw.VFS{
+			Name:             "sftp",
+			Type:             "sftp",
+			ZipAsFolderCache: 10,
+			SFTP: &vfsrw.SFTP{
+				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
+				User:     config.EnvString(user),
+				Password: config.EnvString(password),
+				BaseDir:  "/",
+				Sessions: 3,
+			},
+		},
+		"s3": &vfsrw.VFS{
+			Name:             "s3",
+			Type:             "s3",
+			ZipAsFolderCache: 10,
+			S3: &vfsrw.S3{
+				Endpoint:        config.EnvString(s3Endpoint),
+				AccessKeyID:     config.EnvString(s3AccessKey),
+				SecretAccessKey: config.EnvString(s3SecretKey),
+				Region:          "us-east-1",
+				UseSSL:          false,
+				CAPEM:           "ignore",
+			},
+		},
+		"web": &vfsrw.VFS{
+			Name:             "web",
+			Type:             "web",
+			ZipAsFolderCache: 10,
+			Web: &vfsrw.Web{
+				BaseURI: ts.URL + "/%%PATH%%",
+			},
 		},
 	}
 	vfs, err := vfsrw.NewFS(cfg, _logger)
@@ -285,70 +385,93 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	zipData := createTestZip()
-	writefs.WriteFile(vfs, "vfs://mem/test.zip", zipData)
+	backends := []string{"mem", "os", "sftp", "s3", "web"}
 
-	entries, err := vfs.ReadDir("vfs://mem/")
-	if err != nil {
-		t.Fatalf("ReadDir on vfs://mem/ failed: %v", err)
-	}
-	foundZip := false
-	for _, e := range entries {
-		t.Logf("Entry in root: %s (IsDir: %v)", e.Name(), e.IsDir())
-		if e.Name() == "test.zip" {
-			foundZip = true
-			if !e.IsDir() {
-				t.Errorf("expected test.zip to be a directory in root listing")
+	for _, be := range backends {
+		t.Run("Backend_"+be, func(t *testing.T) {
+			var basePath string
+			if be == "s3" {
+				basePath = "vfs://s3/testbucket/"
+			} else {
+				basePath = fmt.Sprintf("vfs://%s/", be)
 			}
-		}
-	}
-	if !foundZip {
-		t.Errorf("test.zip not found in root directory listing")
-	}
+			zipPath := basePath + "test.zip"
 
-	// Nun IN das Zip schauen
-	entries, err = vfs.ReadDir("vfs://mem/test.zip")
-	if err != nil {
-		t.Fatalf("ReadDir on zip failed: %v", err)
-	}
-	foundSub := false
-	for _, e := range entries {
-		if e.Name() == "sub" {
-			foundSub = true
-			if !e.IsDir() {
-				t.Errorf("expected sub to be a directory")
+			if writefs.IsWriteable(vfs, zipPath) {
+				if _, err := writefs.WriteFile(vfs, zipPath, zipData); err != nil {
+					t.Fatalf("[%s] failed to write zip file: %v", be, err)
+				}
 			}
-		}
-	}
-	if !foundSub {
-		t.Errorf("sub directory not found in zip root")
-	}
 
-	// Noch tiefer schauen
-	entries, err = vfs.ReadDir("vfs://mem/test.zip/sub")
-	if err != nil {
-		t.Fatalf("ReadDir on zip/sub failed: %v", err)
-	}
-	foundDeep := false
-	for _, e := range entries {
-		if e.Name() == "deep" {
-			foundDeep = true
-			if !e.IsDir() {
-				t.Errorf("expected deep to be a directory")
+			if be == "web" {
+				// WebFS does not support ReadDir on the base directory generally,
+				// as it doesn't know which files exist on the server.
+				t.Logf("[%s] Skipping ReadDir on base directory for WebFS", be)
+			} else {
+				res, err := vfs.ReadDir(basePath)
+				if err != nil {
+					t.Fatalf("[%s] ReadDir on %s failed: %v", be, basePath, err)
+				}
+				foundZip := false
+				for _, e := range res {
+					t.Logf("[%s] Entry in root: %s (IsDir: %v)", be, e.Name(), e.IsDir())
+					if e.Name() == "test.zip" {
+						foundZip = true
+						if !e.IsDir() {
+							t.Errorf("[%s] expected test.zip to be a directory in root listing", be)
+						}
+					}
+				}
+				if !foundZip {
+					t.Errorf("[%s] test.zip not found in root directory listing", be)
+				}
 			}
-		}
-	}
-	if !foundDeep {
-		t.Errorf("deep directory not found in zip/sub")
-	}
 
-	// Wir akzeptieren hier eine leere Liste, wenn keine expliziten Verzeichnisse da sind,
-	// aber Stat muss funktionieren.
-	fi, err := vfs.Stat("vfs://mem/test.zip/sub/deep/deeptest.txt")
-	if err != nil {
-		t.Errorf("Stat on deeptest.txt in zip failed: %v", err)
-	} else {
-		t.Logf("Stat on deeptest.txt in zip succeeded: %s, %d", fi.Name(), fi.Size())
+			// Nun IN das Zip schauen
+			entries, err := vfs.ReadDir(zipPath)
+			if err != nil {
+				t.Fatalf("[%s] ReadDir on zip failed: %v", be, err)
+			}
+			foundSub := false
+			for _, e := range entries {
+				if e.Name() == "sub" {
+					foundSub = true
+					if !e.IsDir() {
+						t.Errorf("[%s] expected sub to be a directory", be)
+					}
+				}
+			}
+			if !foundSub {
+				t.Errorf("[%s] sub directory not found in zip root", be)
+			}
+
+			// Noch tiefer schauen
+			entries, err = vfs.ReadDir(zipPath + "/sub")
+			if err != nil {
+				t.Fatalf("[%s] ReadDir on zip/sub failed: %v", be, err)
+			}
+			foundDeep := false
+			for _, e := range entries {
+				if e.Name() == "deep" {
+					foundDeep = true
+					if !e.IsDir() {
+						t.Errorf("[%s] expected deep to be a directory", be)
+					}
+				}
+			}
+			if !foundDeep {
+				t.Errorf("[%s] deep directory not found in zip/sub", be)
+			}
+
+			// Wir akzeptieren hier eine leere Liste, wenn keine expliziten Verzeichnisse da sind,
+			// aber Stat muss funktionieren.
+			fi, err := vfs.Stat(zipPath + "/sub/deep/deeptest.txt")
+			if err != nil {
+				t.Errorf("[%s] Stat on deeptest.txt in zip failed: %v", be, err)
+			} else {
+				t.Logf("[%s] Stat on deeptest.txt in zip succeeded: %s, %d", be, fi.Name(), fi.Size())
+			}
+		})
 	}
 }
 
@@ -368,6 +491,25 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 	// 3. S3 Setup
 	s3Endpoint, _, s3AccessKey, s3SecretKey, s3Closer := setupS3Server(t)
 	defer s3Closer()
+
+	// 4. Web Setup
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name := filepath.Base(r.URL.Path)
+		var data []byte
+		switch name {
+		case "test1.zip":
+			data = zipData1
+		case "test2.zip":
+			data = zipData2
+		case "test3.zip":
+			data = zipData3
+		default:
+			data = createCustomTestZip("test.txt", fmt.Sprintf("hello zip %s", name))
+		}
+		// Just serve the same zip for any request
+		http.ServeContent(w, r, r.URL.Path, time.Now(), bytes.NewReader(data))
+	}))
+	defer ts.Close()
 
 	cfg := vfsrw.Config{
 		"mem": &vfsrw.VFS{
@@ -407,6 +549,14 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 				CAPEM:           "ignore",
 			},
 		},
+		"web": &vfsrw.VFS{
+			Name:             "web",
+			Type:             "web",
+			ZipAsFolderCache: 2,
+			Web: &vfsrw.Web{
+				BaseURI: ts.URL + "/%%PATH%%",
+			},
+		},
 	}
 	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
@@ -414,55 +564,89 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	zipData := createTestZip()
-
-	backends := []string{"mem", "os", "sftp", "s3"}
+	backends := []string{"mem", "os", "sftp", "s3", "web"}
 
 	for _, be := range backends {
 		t.Run("Backend_"+be, func(t *testing.T) {
-			var zipPath1, zipPath2, zipPath3 string
+			// Write 3 zip files for writeable backends
+			zipPath1Tmp := fmt.Sprintf("vfs://%s/test1.zip", be)
 			if be == "s3" {
-				zipPath1 = fmt.Sprintf("vfs://%s/testbucket/1.zip", be)
-				zipPath2 = fmt.Sprintf("vfs://%s/testbucket/2.zip", be)
-				zipPath3 = fmt.Sprintf("vfs://%s/testbucket/3.zip", be)
+				zipPath1Tmp = fmt.Sprintf("vfs://%s/testbucket/test1.zip", be)
+			}
+			if writefs.IsWriteable(vfs, zipPath1Tmp) {
+				for i := 1; i <= 3; i++ {
+					var zp string
+					if be == "s3" {
+						zp = fmt.Sprintf("vfs://%s/testbucket/test%d.zip", be, i)
+					} else {
+						zp = fmt.Sprintf("vfs://%s/test%d.zip", be, i)
+					}
+					var data []byte
+					switch i {
+					case 1:
+						data = zipData1
+					case 2:
+						data = zipData2
+					case 3:
+						data = zipData3
+					default:
+						data = createCustomTestZip("test.txt", fmt.Sprintf("hello zip test%d.zip", i))
+					}
+					if _, err := writefs.WriteFile(vfs, zp, data); err != nil {
+						t.Fatalf("failed to write zip file %s: %v", zp, err)
+					}
+				}
+			}
+
+			var zipPath1, zipPath2, zipPath3 string
+			if be == "web" {
+				zipPath1 = "vfs://web/test1.zip"
+				zipPath2 = "vfs://web/test2.zip"
+				zipPath3 = "vfs://web/test3.zip"
+			} else if be == "s3" {
+				zipPath1 = fmt.Sprintf("vfs://%s/testbucket/test1.zip", be)
+				zipPath2 = fmt.Sprintf("vfs://%s/testbucket/test2.zip", be)
+				zipPath3 = fmt.Sprintf("vfs://%s/testbucket/test3.zip", be)
 			} else {
-				zipPath1 = fmt.Sprintf("vfs://%s/1.zip", be)
-				zipPath2 = fmt.Sprintf("vfs://%s/2.zip", be)
-				zipPath3 = fmt.Sprintf("vfs://%s/3.zip", be)
+				zipPath1 = fmt.Sprintf("vfs://%s/test1.zip", be)
+				zipPath2 = fmt.Sprintf("vfs://%s/test2.zip", be)
+				zipPath3 = fmt.Sprintf("vfs://%s/test3.zip", be)
 			}
 
-			if _, err := writefs.WriteFile(vfs, zipPath1, zipData); err != nil {
-				t.Fatalf("failed to write zip file 1: %v", err)
-			}
-			if _, err := writefs.WriteFile(vfs, zipPath2, zipData); err != nil {
-				t.Fatalf("failed to write zip file 2: %v", err)
-			}
-			if _, err := writefs.WriteFile(vfs, zipPath3, zipData); err != nil {
-				t.Fatalf("failed to write zip file 3: %v", err)
+			if writefs.IsWriteable(vfs, zipPath1) {
+				if _, err := writefs.WriteFile(vfs, zipPath1, zipData1); err != nil {
+					t.Fatalf("failed to write zip file 1: %v", err)
+				}
+				if _, err := writefs.WriteFile(vfs, zipPath2, zipData2); err != nil {
+					t.Fatalf("failed to write zip file 2: %v", err)
+				}
+				if _, err := writefs.WriteFile(vfs, zipPath3, zipData3); err != nil {
+					t.Fatalf("failed to write zip file 3: %v", err)
+				}
 			}
 
-			// Zugriff auf 1.zip -> Geladen (Cache: [1])
-			t.Logf("[%s] Accessing 1.zip", be)
+			// Zugriff auf test1.zip -> Geladen (Cache: [1])
+			t.Logf("[%s] Accessing test1.zip", be)
 			if _, err := vfs.ReadFile(zipPath1 + "/test.txt"); err != nil {
-				t.Fatalf("failed to read 1.zip: %v", err)
+				t.Fatalf("failed to read test1.zip: %v", err)
 			}
 
-			// Zugriff auf 2.zip -> Geladen (Cache: [1, 2])
-			t.Logf("[%s] Accessing 2.zip", be)
+			// Zugriff auf test2.zip -> Geladen (Cache: [1, 2])
+			t.Logf("[%s] Accessing test2.zip", be)
 			if _, err := vfs.ReadFile(zipPath2 + "/test.txt"); err != nil {
-				t.Fatalf("failed to read 2.zip: %v", err)
+				t.Fatalf("failed to read test2.zip: %v", err)
 			}
 
-			// Zugriff auf 3.zip -> Geladen, 1.zip sollte verdrängt werden (Cache: [2, 3])
-			t.Logf("[%s] Accessing 3.zip (should evict 1.zip)", be)
+			// Zugriff auf test3.zip -> Geladen, test1.zip sollte verdrängt werden (Cache: [2, 3])
+			t.Logf("[%s] Accessing test3.zip (should evict test1.zip)", be)
 			if _, err := vfs.ReadFile(zipPath3 + "/test.txt"); err != nil {
-				t.Fatalf("failed to read 3.zip: %v", err)
+				t.Fatalf("failed to read test3.zip: %v", err)
 			}
 
-			// Erneuter Zugriff auf 1.zip -> Sollte neu geladen werden (Cache: [3, 1], 2.zip verdrängt)
-			t.Logf("[%s] Accessing 1.zip again (should evict 2.zip)", be)
+			// Erneuter Zugriff auf test1.zip -> Sollte neu geladen werden (Cache: [3, 1], test2.zip verdrängt)
+			t.Logf("[%s] Accessing test1.zip again (should evict test2.zip)", be)
 			if _, err := vfs.ReadFile(zipPath1 + "/test.txt"); err != nil {
-				t.Fatalf("failed to read 1.zip again: %v", err)
+				t.Fatalf("failed to read test1.zip again: %v", err)
 			}
 		})
 	}
@@ -561,6 +745,13 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 	s3Endpoint, _, s3AccessKey, s3SecretKey, s3Closer := setupS3Server(t)
 	defer s3Closer()
 
+	// 4. Web Setup
+	zipData := createCustomTestZip("test.txt", "hello world")
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, r.URL.Path, time.Now(), bytes.NewReader(zipData))
+	}))
+	defer ts.Close()
+
 	cfg := vfsrw.Config{
 		"mem": &vfsrw.VFS{
 			Name:             "mem",
@@ -599,6 +790,14 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				CAPEM:           "ignore",
 			},
 		},
+		"web": &vfsrw.VFS{
+			Name:             "web",
+			Type:             "web",
+			ZipAsFolderCache: 20,
+			Web: &vfsrw.Web{
+				BaseURI: ts.URL + "/%%PATH%%",
+			},
+		},
 	}
 	vfs, err := vfsrw.NewFS(cfg, _logger)
 	if err != nil {
@@ -606,11 +805,18 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	backends := []string{"mem", "os", "sftp", "s3"}
+	backends := []string{"mem", "os", "sftp", "s3", "web"}
 	numZips := 5
-	zipData := createCustomTestZip("test.txt", "hello world")
+	zipData = createCustomTestZip("test.txt", "hello world")
 
 	for _, be := range backends {
+		basePath := fmt.Sprintf("vfs://%s/", be)
+		if be == "s3" {
+			basePath = fmt.Sprintf("vfs://%s/testbucket/", be)
+		}
+		if !writefs.IsWriteable(vfs, basePath) {
+			continue // Skip read-only backends in this test setup
+		}
 		for i := range numZips {
 			var name string
 			if be == "s3" {
@@ -638,7 +844,9 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				zipID := (workerID + j) % numZips
 
 				var path string
-				if backend == "s3" {
+				if backend == "web" {
+					path = fmt.Sprintf("vfs://web/test%d.zip/test.txt", zipID)
+				} else if backend == "s3" {
 					path = fmt.Sprintf("vfs://%s/testbucket/test%d.zip/test.txt", backend, zipID)
 				} else {
 					path = fmt.Sprintf("vfs://%s/test%d.zip/test.txt", backend, zipID)

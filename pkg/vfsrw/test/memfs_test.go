@@ -88,6 +88,11 @@ func TestVFS_MemFS(t *testing.T) {
 		t.Fatalf("file 'test.txt' not found in directory listing")
 	}
 
+	// IsWriteable
+	if !vfs.IsWriteable(testFile) {
+		t.Fatalf("expected file '%s' to be writeable", testFile)
+	}
+
 	// Copy
 	copyFile := "vfs://testmem/copy.txt"
 	_, err = writefs.Copy(vfs, testFile, vfs, copyFile)

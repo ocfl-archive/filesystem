@@ -2,6 +2,10 @@ package writefs
 
 import "io/fs"
 
+type IsWriteableFS interface {
+	IsWriteable(path string) bool
+}
+
 type CreateFS interface {
 	Create(path string) (FileWrite, error)
 }

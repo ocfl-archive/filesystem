@@ -186,6 +186,10 @@ func (d *osFSRW) WriteFile(name string, data []byte) (int64, error) {
 	return int64(len(data)), nil
 }
 
+func (d *osFSRW) IsWriteable(path string) bool {
+	return !d.readOnly
+}
+
 var (
 	_ writefs.FullFS = &osFSRW{}
 	_ fs.ReadDirFS   = &osFSRW{}

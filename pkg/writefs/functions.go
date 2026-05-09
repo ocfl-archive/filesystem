@@ -205,3 +205,10 @@ func Join(fsys fs.FS, elems ...string) string {
 	}
 	return filepath.ToSlash(filepath.Join(elems...))
 }
+
+func IsWriteable(fsys fs.FS, path string) bool {
+	if _fsys, ok := fsys.(IsWriteableFS); ok {
+		return _fsys.IsWriteable(path)
+	}
+	return false
+}

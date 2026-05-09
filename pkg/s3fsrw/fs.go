@@ -115,6 +115,10 @@ func (s3FS *s3FSRW) WriteFile(path string, data []byte) (int64, error) {
 	return ui.Size, nil
 }
 
+func (s3FS *s3FSRW) IsWriteable(path string) bool {
+	return !s3FS.readOnly
+}
+
 func (s3FS *s3FSRW) Fullpath(name string) (string, error) {
 	return name, nil
 }
