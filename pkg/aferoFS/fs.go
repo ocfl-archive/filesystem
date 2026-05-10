@@ -151,7 +151,7 @@ func (m *aferoFSRW) Close() error {
 }
 
 func (m *aferoFSRW) Sub(dir string) (fs.FS, error) {
-	return writefs.Sub(m, dir)
+	return writefs.NewSubFS(m, dir)
 }
 
 // Interface Checks
