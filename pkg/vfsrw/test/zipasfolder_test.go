@@ -57,7 +57,7 @@ var (
 func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	if fsName == "s3" {
 		// t.Skip("Skipping S3 due to eventual consistency (file not visible immediately after write)")
-		time.Sleep(500 * time.Millisecond) // Give S3 a moment to find the bucket/files
+		//time.Sleep(500 * time.Millisecond) // Give S3 a moment to find the bucket/files
 	}
 	if fsName == "sftp" {
 		// SFTP is generally OK for simple sequential tests
@@ -88,7 +88,23 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 		if closer, ok := subFS.(io.Closer); ok {
 			closer.Close()
 		}
-		time.Sleep(1 * time.Second) // Give S3 a moment to be consistent
+		//time.Sleep(1 * time.Second) // Give S3 a moment to be consistent
+
+		// Check for checksum files
+		for _, alg := range []checksum.DigestAlgorithm{checksum.DigestSHA512} {
+			checksumFile := zipPath + "." + string(alg)
+			if _, err := vfs.Stat(checksumFile); err != nil {
+				t.Errorf("expected checksum file '%s' to exist, got error: %v", checksumFile, err)
+			} else {
+				t.Logf("checksum file '%s' exists", checksumFile)
+				data, err := vfs.ReadFile(checksumFile)
+				if err != nil {
+					t.Errorf("failed to read checksum file '%s': %v", checksumFile, err)
+				} else {
+					t.Logf("checksum file '%s' content: %s", checksumFile, string(data))
+				}
+			}
+		}
 	} else {
 		// webFS is read-only in this test, so we still use the pre-generated data for the server
 		zipData := createTestZip()
@@ -172,7 +188,7 @@ func setupSFTPServer(t *testing.T, port int) (server *sftp_test_server.SFTPServe
 	}()
 
 	// Give the server a moment to start
-	time.Sleep(200 * time.Millisecond)
+	//time.Sleep(200 * time.Millisecond)
 	return server, tempDir, user, password
 }
 
@@ -420,7 +436,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			if be == "s3" {
 				// t.Skip("Skipping S3 due to eventual consistency issues")
 				vfs.MkDir("vfs://s3/testbucket")
-				time.Sleep(500 * time.Millisecond)
+				//time.Sleep(500 * time.Millisecond)
 			}
 			if be == "sftp" {
 				// SFTP is fine here
@@ -450,7 +466,15 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 				if closer, ok := subFS.(io.Closer); ok {
 					closer.Close()
 				}
-				time.Sleep(1 * time.Second) // Give S3 a moment
+				//time.Sleep(1 * time.Second) // Give S3 a moment
+
+				// Check for checksum files
+				for _, alg := range []checksum.DigestAlgorithm{checksum.DigestSHA512} {
+					checksumFile := zipPath + "." + string(alg)
+					if _, err := vfs.Stat(checksumFile); err != nil {
+						t.Errorf("[%s] expected checksum file '%s' to exist, got error: %v", be, checksumFile, err)
+					}
+				}
 			}
 
 			if be == "web" {
@@ -619,15 +643,9 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 	for _, be := range backends {
 		t.Run("Backend_"+be, func(t *testing.T) {
 			if be == "s3" {
-				t.Skip("Skipping S3 in CacheLimit test due to eventual consistency issues (file not visible immediately after write)")
+				//t.Skip("Skipping S3 in CacheLimit test due to eventual consistency issues (file not visible immediately after write)")
 				vfs.MkDir("vfs://s3/testbucket")
-				time.Sleep(500 * time.Millisecond)
-			}
-			if be == "sftp" {
-				t.Skip("Skipping SFTP in CacheLimit test due to session timeout issues during rapid evictions")
-			}
-			if be == "os" {
-				// t.Skip("Skipping OS in CacheLimit test due to timing issues")
+				//time.Sleep(500 * time.Millisecond)
 			}
 			// Write 3 zip files for writeable backends
 			zipPath1Tmp := fmt.Sprintf("vfs://%s/test1.zip", be)
@@ -728,12 +746,6 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 				t.Fatalf("failed to read test3.zip: %v", err)
 			}
 
-			if be == "s3" {
-				// t.Skip("Skip S3/SFTP/OS for now due to timing/OS locking issues")
-			}
-			if be == "sftp" {
-				t.Skip("Skip SFTP for now due to timing/OS locking issues")
-			}
 			// Erneuter Zugriff auf test1.zip -> Sollte neu geladen werden (Cache: [3, 1], test2.zip verdrängt)
 			t.Logf("[%s] Accessing test1.zip again (should evict test2.zip)", be)
 			if _, err := vfs.ReadFile(zipPath1 + "/test.txt"); err != nil {
