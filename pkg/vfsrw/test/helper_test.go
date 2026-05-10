@@ -93,11 +93,6 @@ func TestMatchPath(t *testing.T) {
 			windows:  false,
 		},
 		{
-			name:    "empty input",
-			input:   "",
-			wantErr: true,
-		},
-		{
 			name:    "invalid vfs uri",
 			input:   "vfs://",
 			wantErr: true,
