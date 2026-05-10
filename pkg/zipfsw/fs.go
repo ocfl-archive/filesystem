@@ -9,6 +9,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v4/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
@@ -27,26 +28,36 @@ func (z *zipFSWCloser) Close() error {
 	return errors.WithStack(z.zipFSW.Close())
 }
 
+type ChecksumFunc func(css map[checksum.DigestAlgorithm]string) error
+
 // NewFS creates a new zip file system.
-// The writer is used to writing the zip file.
+// The writer is used to write the zip file.
 // If closeWriter is true and writer implements io.WriteCloser, the writer will be closed when the file system is closed.
 // If noCompression is true, the files will be stored without compression.
 // The name is used for identification (e.g. in Equal).
 // The logger is used for logging errors.
-func NewFS(writer io.Writer, closeWriter bool, noCompression bool, name string, logger zLogger.ZLogger) (fs.FS, error) {
-	zipWriter := zip.NewWriter(writer)
+func NewFS(writer io.Writer, closeWriter bool, noCompression bool, name string, algs []checksum.DigestAlgorithm, csFunc ChecksumFunc, logger zLogger.ZLogger) (fs.FS, error) {
+	var csWriter *checksum.ChecksumWriter
+	var w = writer
+	var err error
+	if len(algs) > 0 {
+		csWriter, err = checksum.NewChecksumWriter(algs, writer)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create checksum writer")
+		}
+		w = csWriter
+	}
+	zipWriter := zip.NewWriter(w)
 	zFS := &zipFSW{
+		closeWriter:   closeWriter,
+		writer:        writer,
 		zipWriter:     zipWriter,
 		newFiles:      []string{},
 		noCompression: noCompression,
 		name:          name,
 		logger:        logger,
-	}
-	if writeCloser, ok := writer.(io.WriteCloser); ok && closeWriter {
-		return &zipFSWCloser{
-			zipFSW: zFS,
-			writer: writeCloser,
-		}, nil
+		csWriter:      csWriter,
+		csFunc:        csFunc,
 	}
 	return zFS, nil
 }
@@ -57,6 +68,10 @@ type zipFSW struct {
 	noCompression bool
 	name          string
 	logger        zLogger.ZLogger
+	csWriter      *checksum.ChecksumWriter
+	closeWriter   bool
+	csFunc        ChecksumFunc
+	writer        io.Writer
 }
 
 func (zfsrw *zipFSW) Fullpath(name string) (string, error) {
@@ -78,7 +93,40 @@ func (zfsrw *zipFSW) HasChanged() bool {
 }
 
 func (zfsrw *zipFSW) Close() error {
-	return zfsrw.zipWriter.Close()
+	var errs = []error{}
+	var checksums map[checksum.DigestAlgorithm]string
+	if err := zfsrw.zipWriter.Close(); err != nil {
+		zfsrw.logger.Error().Err(err).Msg("cannot close zip writer")
+		errs = append(errs, err)
+	}
+	if zfsrw.csWriter != nil {
+		if err := zfsrw.csWriter.Close(); err != nil {
+			zfsrw.logger.Error().Err(err).Msg("cannot close checksum writer")
+			errs = append(errs, err)
+		} else if zfsrw.csFunc != nil {
+			zfsrw.logger.Debug().Msg("checksum writer closed")
+			checksums, err = zfsrw.csWriter.GetChecksums()
+			if err != nil {
+				zfsrw.logger.Error().Err(err).Msg("cannot get checksums")
+				errs = append(errs, err)
+			}
+		}
+	}
+	if closeWriter, ok := zfsrw.writer.(io.WriteCloser); ok && zfsrw.closeWriter {
+		if err := closeWriter.Close(); err != nil {
+			zfsrw.logger.Error().Err(err).Msg("cannot close zip writer")
+			errs = append(errs, err)
+		}
+	}
+	if len(checksums) > 0 && zfsrw.csFunc != nil {
+		zfsrw.logger.Debug().Msgf("checksums: %v", checksums)
+		defer func() {
+			if err := zfsrw.csFunc(checksums); err != nil {
+				errs = append(errs, err)
+			}
+		}()
+	}
+	return errors.Combine(errs...)
 }
 
 func (zfsrw *zipFSW) Create(path string) (writefs.FileWrite, error) {

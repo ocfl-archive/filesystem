@@ -17,6 +17,7 @@ import (
 	sftp_test_server "github.com/JuniorGuerra/sftp_test_server"
 	"github.com/je4/filesystem/v4/pkg/vfsrw"
 	"github.com/je4/filesystem/v4/pkg/writefs"
+	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/johannesboyne/gofakes3"
@@ -210,7 +211,7 @@ func TestZipAsFolder_Afero(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:        "mem",
 			Type:        "afero",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
@@ -233,7 +234,7 @@ func TestZipAsFolder_OS(t *testing.T) {
 		"os": &vfsrw.VFS{
 			Name:        "os",
 			Type:        "os",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			OS:          &vfsrw.OS{BaseDir: tempDir},
 		},
 	}
@@ -258,7 +259,7 @@ func TestZipAsFolder_SFTP(t *testing.T) {
 		"sftp": &vfsrw.VFS{
 			Name:        "sftp",
 			Type:        "sftp",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
@@ -288,7 +289,7 @@ func TestZipAsFolder_S3(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:        "s3",
 			Type:        "s3",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(endpoint),
 				AccessKeyID:     config.EnvString(accessKey),
@@ -321,7 +322,7 @@ func TestZipAsFolder_WebFS(t *testing.T) {
 			Name:        "web",
 			Type:        "web",
 			ReadOnly:    true,
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
 			},
@@ -363,19 +364,19 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:        "mem",
 			Type:        "afero",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 		"os": &vfsrw.VFS{
 			Name:        "os",
 			Type:        "os",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			OS:          &vfsrw.OS{BaseDir: osTempDir},
 		},
 		"sftp": &vfsrw.VFS{
 			Name:        "sftp",
 			Type:        "sftp",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
@@ -387,7 +388,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:        "s3",
 			Type:        "s3",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
 				AccessKeyID:     config.EnvString(s3AccessKey),
@@ -400,7 +401,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 		"web": &vfsrw.VFS{
 			Name:        "web",
 			Type:        "web",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 10, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
 			},
@@ -564,19 +565,19 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:        "mem",
 			Type:        "afero",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 		"os": &vfsrw.VFS{
 			Name:        "os",
 			Type:        "os",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			OS:          &vfsrw.OS{BaseDir: osTempDir},
 		},
 		"sftp": &vfsrw.VFS{
 			Name:        "sftp",
 			Type:        "sftp",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
@@ -588,7 +589,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:        "s3",
 			Type:        "s3",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
 				AccessKeyID:     config.EnvString(s3AccessKey),
@@ -601,7 +602,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 		"web": &vfsrw.VFS{
 			Name:        "web",
 			Type:        "web",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
 			},
@@ -748,7 +749,7 @@ func TestZipAsFolder_Stat(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:        "mem",
 			Type:        "afero",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 2, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
@@ -859,19 +860,19 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"mem": &vfsrw.VFS{
 			Name:        "mem",
 			Type:        "afero",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 		"os": &vfsrw.VFS{
 			Name:        "os",
 			Type:        "os",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			OS:          &vfsrw.OS{BaseDir: osTempDir},
 		},
 		"sftp": &vfsrw.VFS{
 			Name:        "sftp",
 			Type:        "sftp",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			SFTP: &vfsrw.SFTP{
 				Address:  config.EnvString(fmt.Sprintf("localhost:%d", port)),
 				User:     config.EnvString(user),
@@ -883,7 +884,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"s3": &vfsrw.VFS{
 			Name:        "s3",
 			Type:        "s3",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			S3: &vfsrw.S3{
 				Endpoint:        config.EnvString(s3Endpoint),
 				AccessKeyID:     config.EnvString(s3AccessKey),
@@ -896,7 +897,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 		"web": &vfsrw.VFS{
 			Name:        "web",
 			Type:        "web",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20},
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true, CacheSize: 20, Digests: []checksum.DigestAlgorithm{checksum.DigestSHA512}},
 			Web: &vfsrw.Web{
 				BaseURI: ts.URL + "/%%PATH%%",
 			},
@@ -914,9 +915,6 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 
 	for _, be := range backends {
 		t.Run("Backend_"+be, func(t *testing.T) {
-			if be == "s3" || be == "sftp" || be == "web" {
-				t.Skip("Skip S3/SFTP/Web for now due to eventual consistency, session timeouts or read-only issues")
-			}
 			basePath := fmt.Sprintf("vfs://%s/", be)
 			if be == "s3" {
 				basePath = fmt.Sprintf("vfs://%s/testbucket/", be)
@@ -925,12 +923,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				t.Skip("Skip read-only backends in this test setup")
 			}
 			for i := range numZips {
-				var name string
-				if be == "s3" {
-					name = fmt.Sprintf("vfs://%s/testbucket/test%d.zip", be, i)
-				} else {
-					name = fmt.Sprintf("vfs://%s/test%d.zip", be, i)
-				}
+				name := basePath + fmt.Sprintf("test%d.zip", i)
 				subFS, err := vfs.SubCreate(name)
 				if err != nil {
 					t.Fatalf("[%s] failed to create zip %s via vfs.Sub: %v", be, name, err)
@@ -961,14 +954,11 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				}
 				zipID := (workerID + j) % numZips
 
-				var path string
-				if backend == "web" {
-					path = fmt.Sprintf("vfs://web/test%d.zip/test.txt", zipID)
-				} else if backend == "s3" {
-					path = fmt.Sprintf("vfs://%s/testbucket/test%d.zip/test.txt", backend, zipID)
-				} else {
-					path = fmt.Sprintf("vfs://%s/test%d.zip/test.txt", backend, zipID)
+				basePath := fmt.Sprintf("vfs://%s/", backend)
+				if backend == "s3" {
+					basePath = fmt.Sprintf("vfs://%s/testbucket/", backend)
 				}
+				path := basePath + fmt.Sprintf("test%d.zip/test.txt", zipID)
 
 				// ReadFile
 				data, err := vfs.ReadFile(path)
@@ -989,12 +979,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				}
 
 				// ReadDir
-				var dirPath string
-				if backend == "s3" {
-					dirPath = fmt.Sprintf("vfs://%s/testbucket/test%d.zip", backend, zipID)
-				} else {
-					dirPath = fmt.Sprintf("vfs://%s/test%d.zip", backend, zipID)
-				}
+				dirPath := basePath + fmt.Sprintf("test%d.zip", zipID)
 				_, err = vfs.ReadDir(dirPath)
 				if err != nil {
 					t.Errorf("Worker %d: ReadDir failed for %s: %v", workerID, dirPath, err)

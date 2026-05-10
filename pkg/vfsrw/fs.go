@@ -14,6 +14,7 @@ import (
 	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/filesystem/v4/pkg/zipasfolder"
 	"github.com/je4/filesystem/v4/pkg/zipfsw"
+	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
@@ -316,8 +317,23 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-
-	zipFS, err := zipfsw.NewFS(fp, true, true, dir, vfs.logger)
+	zipFS, err := zipfsw.NewFS(
+		fp,
+		true,
+		!conf.ZipAsFolder.Compress,
+		dir,
+		conf.ZipAsFolder.Digests,
+		func(css map[checksum.DigestAlgorithm]string) error {
+			for digestAlg, digest := range css {
+				digestFile := fmt.Sprintf("%s.%s", dir, digestAlg)
+				if _, err := writefs.WriteFile(vfs, digestFile, []byte(fmt.Sprintf("%s *%s", digest, filepath.Base(dir)))); err != nil {
+					return errors.Wrapf(err, "failed to write digest file '%s'", digestFile)
+				}
+			}
+			return nil
+		},
+		vfs.logger,
+	)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

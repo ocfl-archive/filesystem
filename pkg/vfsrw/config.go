@@ -1,6 +1,9 @@
 package vfsrw
 
-import "github.com/je4/utils/v2/pkg/config"
+import (
+	"github.com/je4/utils/v2/pkg/checksum"
+	"github.com/je4/utils/v2/pkg/config"
+)
 import "go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 import certconfig "github.com/je4/trustutil/v2/pkg/config"
 
@@ -59,11 +62,11 @@ type Afero struct {
 }
 
 type ZipAsFolder struct {
-	Enabled   bool     `toml:"enabled"`
-	Digests   []string `toml:"digests"`
-	CacheSize uint     `toml:"cachesize"`
-	Compress  bool     `toml:"compress"`
-	ReadOnly  bool     `toml:"readonly"`
+	Enabled   bool                       `toml:"enabled"`
+	Digests   []checksum.DigestAlgorithm `toml:"digests"`
+	CacheSize uint                       `toml:"cachesize"`
+	Compress  bool                       `toml:"compress"`
+	ReadOnly  bool                       `toml:"readonly"`
 }
 
 type VFS struct {
