@@ -47,6 +47,10 @@ func isClosed(fsys fs.FS) bool {
 }
 
 func clearPath(path string) string {
+	if strings.HasPrefix(path, "vfs:/") {
+		path = strings.Trim(filepath.ToSlash(filepath.Clean(path[5:])), "/")
+		return "vfs://" + path
+	}
 	path = strings.Trim(filepath.ToSlash(filepath.Clean(path)), "/")
 	if path == "." {
 		path = ""

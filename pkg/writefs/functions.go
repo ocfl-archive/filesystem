@@ -18,32 +18,42 @@ func Equal(fsys1, fsys2 fs.FS) bool {
 	return false
 }
 
-func SubFSCreate(fsys fs.FS, path string) (fs.FS, error) {
-	if err := MkDir(fsys, path); err != nil {
+func SubCreate(fSys fs.FS, dir string) (fs.FS, error) {
+	if subCreateFS, ok := fSys.(SubCreateFS); ok {
+		return subCreateFS.SubCreate(dir)
+	}
+	if err := MkDir(fSys, dir); err != nil {
 		if !errors.Is(err, fs.ErrExist) {
-			return nil, errors.Wrapf(err, "cannot create directory '%s'", path)
+			return nil, errors.Wrapf(err, "cannot create directory '%s'", dir)
 		}
 	}
-	return Sub(fsys, path)
+	return Sub(fSys, dir)
 }
 
 func Sub(fsys fs.FS, dir string) (fs.FS, error) {
-	if _fsys, ok := fsys.(SubFS); ok {
-		return _fsys.Sub(dir)
+	if _subFS, ok := fsys.(SubFS); ok {
+		return _subFS.Sub(dir)
 	}
 	return NewSubFS(fsys, dir)
 }
 
+func RealPath(fSys fs.FS, dir string) string {
+	if realPathFS, ok := fSys.(RealPathFS); ok {
+		return realPathFS.RealPath(dir)
+	}
+	return filepath.ToSlash(filepath.Clean(dir))
+}
+
 func MkDir(fsys fs.FS, path string) error {
-	if _fsys, ok := fsys.(MkDirFS); ok {
-		return _fsys.MkDir(path)
+	if mkDirFS, ok := fsys.(MkDirFS); ok {
+		return mkDirFS.MkDir(path)
 	}
 	return errors.Wrapf(fs.ErrInvalid, "fs does not support MkDir")
 }
 
 func Rename(fsys fs.FS, oldPath, newPath string) error {
-	if _fsys, ok := fsys.(RenameFS); ok {
-		return _fsys.Rename(oldPath, newPath)
+	if renameFS, ok := fsys.(RenameFS); ok {
+		return renameFS.Rename(oldPath, newPath)
 	}
 
 	if _, ok := fsys.(RemoveFS); !ok {

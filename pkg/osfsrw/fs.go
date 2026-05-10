@@ -51,6 +51,18 @@ type osFSRW struct {
 	readOnly bool
 }
 
+func (d *osFSRW) SubCreate(dir string) (fs.FS, error) {
+	if err := os.MkdirAll(filepath.Join(d.dir, dir), 0755); err != nil {
+		return nil, errors.Wrapf(err, "cannot create directory '%s'", dir)
+	}
+	return d.Sub(dir)
+}
+
+func (d *osFSRW) RealPath(path string) string {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (d *osFSRW) Copy(src, dst string) (int64, error) {
 	if d.readOnly {
 		return 0, errors.New("read only filesystem")

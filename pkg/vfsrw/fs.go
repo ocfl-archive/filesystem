@@ -30,11 +30,13 @@ type VFSRW interface {
 	writefs.EqualFS
 	writefs.IsWriteableFS
 	writefs.SubFS
+	writefs.SubCreateFS
+	writefs.RealPathFS
 	fs.FS
 	fs.ReadDirFS
 	fs.ReadFileFS
 	fs.StatFS
-	AddFS(name string, fsys fs.FS)
+	AddFS(name string, vfsConfig *VFS, fsys fs.FS)
 }
 
 type vfsStruct struct {
@@ -44,8 +46,7 @@ type vfsStruct struct {
 
 func NewFS(config Config, logger zLogger.ZLogger) (VFSRW, error) {
 
-	_logger := logger.With().Str("module", "vfsrw").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("module", "vfsrw").Logger())
 
 	vfs := &vFSRW{
 		fss:    map[string]vfsStruct{},
@@ -59,8 +60,7 @@ func NewFS(config Config, logger zLogger.ZLogger) (VFSRW, error) {
 }
 
 func NewFSWithMiniResolver(config Config, miniResolverClient *resolver.MiniResolver, logger zLogger.ZLogger) (*vFSRW, error) {
-	_logger := logger.With().Str("module", "vfsrw").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("module", "vfsrw").Logger())
 
 	vfs := &vFSRW{
 		fss:                map[string]vfsStruct{},
@@ -90,8 +90,7 @@ func (vfs *vFSRW) init(config Config) error {
 			if _, ok := vfs.fss[name]; ok {
 				continue
 			}
-			_logger := vfs.logger.With().Str("fs", name).Logger()
-			logger := &_logger
+			logger := new(vfs.logger.With().Str("fs", name).Logger())
 			switch strings.ToLower(cfg.Type) {
 			case "minikvstore":
 				if cfg.MiniKVStore == nil {
@@ -265,7 +264,27 @@ type vFSRW struct {
 	logger                   zLogger.ZLogger
 }
 
+func (vfs *vFSRW) RealPath(path string) string {
+	_, newPath, err := MatchPath(path)
+	if err != nil {
+		vfs.logger.Error().Err(err).Msgf("cannot match path '%s'", path)
+		return path
+	}
+	return newPath
+}
+
 func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
+	fSys, _, err := vfs.getFS(dir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get FS for path '%s'", dir)
+	}
+	if subFS, ok := fSys.(writefs.SubFS); ok {
+		return subFS.Sub(dir)
+	}
+	return writefs.NewSubFS(fSys, dir)
+}
+
+func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	conf, err := vfs.getConfig(dir)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -278,17 +297,14 @@ func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
 	}
 	fi, err := fs.Stat(vfs, dir)
 	if err == nil {
-		if !fi.IsDir() && !zipAsFolder {
+		if !fi.IsDir() {
 			return nil, errors.Errorf("cannot use sub on file '%s'", dir)
 		}
-		if zipAsFolder {
-			vFS, path, err := vfs.getFS(dir)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			return zipfsw.NewFSFile(vFS, path, true, vfs.logger)
+		vFS, pathStr, err := vfs.getFS(dir)
+		if err != nil {
+			return nil, errors.WithStack(err)
 		}
-		return writefs.NewSubFS(vfs, dir)
+		return zipfsw.NewFSFile(vFS, pathStr, true, vfs.logger)
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, errors.WithStack(err)
@@ -331,8 +347,8 @@ func (vfs *vFSRW) Get(name string, readOnly bool) (fs.FS, error) {
 	return f.FS, nil
 }
 
-func (vfs *vFSRW) AddFS(name string, fsys fs.FS) {
-	vfs.fss[name] = vfsStruct{FS: fsys}
+func (vfs *vFSRW) AddFS(name string, vfsConfig *VFS, fsys fs.FS) {
+	vfs.fss[name] = vfsStruct{FS: fsys, VFS: vfsConfig}
 }
 
 func (vfs *vFSRW) Equal(fsys fs.FS) bool {

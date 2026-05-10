@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"path/filepath"
 
 	"emperror.dev/errors"
 )
@@ -18,6 +19,17 @@ func NewSubFS(fsys fs.FS, dir string) (fs.FS, error) {
 type subFS struct {
 	fsys fs.FS
 	dir  string
+}
+
+func (sfs *subFS) SubCreate(dir string) (fs.FS, error) {
+	if subCreateFS, ok := sfs.fsys.(SubCreateFS); ok {
+		return subCreateFS.SubCreate(path.Join(sfs.dir, dir))
+	}
+	return SubCreate(sfs.fsys, path.Join(sfs.dir, dir))
+}
+
+func (sfs *subFS) RealPath(dir string) string {
+	return filepath.ToSlash(filepath.Clean(dir))
 }
 
 func (sfs *subFS) Copy(src, dst string) (int64, error) {

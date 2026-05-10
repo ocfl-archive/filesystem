@@ -54,6 +54,14 @@ type SubFS interface {
 	Sub(dir string) (fs.FS, error)
 }
 
+type SubCreateFS interface {
+	SubCreate(dir string) (fs.FS, error)
+}
+
+type RealPathFS interface {
+	RealPath(path string) string
+}
+
 type FullFS interface {
 	CopyFS
 	CreateFS
@@ -66,6 +74,8 @@ type FullFS interface {
 	FullpathFS
 	EqualFS
 	SubFS
+	SubCreateFS
+	RealPathFS
 	fs.FS
 	fs.ReadDirFS
 	fs.ReadFileFS

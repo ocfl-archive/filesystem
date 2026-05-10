@@ -87,6 +87,14 @@ type s3FSRW struct {
 	readOnly bool
 }
 
+func (s3FS *s3FSRW) SubCreate(dir string) (fs.FS, error) {
+	return s3FS.Sub(dir)
+}
+
+func (s3FS *s3FSRW) RealPath(path string) string {
+	return path
+}
+
 func (s3FS *s3FSRW) Equal(fsys fs.FS) bool {
 	if s3FS2, ok := fsys.(*s3FSRW); ok {
 		return s3FS.endpoint == s3FS2.endpoint && s3FS.region == s3FS2.region && s3FS.readOnly == s3FS2.readOnly

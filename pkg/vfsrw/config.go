@@ -59,10 +59,11 @@ type Afero struct {
 }
 
 type ZipAsFolder struct {
-	Enabled   bool `toml:"enabled"`
-	CacheSize uint `toml:"cachesize"`
-	Compress  bool `toml:"compress"`
-	ReadOnly  bool `toml:"readonly"`
+	Enabled   bool     `toml:"enabled"`
+	Digests   []string `toml:"digests"`
+	CacheSize uint     `toml:"cachesize"`
+	Compress  bool     `toml:"compress"`
+	ReadOnly  bool     `toml:"readonly"`
 }
 
 type VFS struct {

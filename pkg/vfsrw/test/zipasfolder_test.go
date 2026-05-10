@@ -71,7 +71,7 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	}
 
 	if fsName != "web" {
-		subFS, err := vfs.Sub(zipPath)
+		subFS, err := vfs.SubCreate(zipPath)
 		if err != nil {
 			t.Fatalf("failed to create zip via vfs.Sub: %v", err)
 		}
@@ -433,7 +433,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			zipPath := basePath + "test.zip"
 
 			if writefs.IsWriteable(vfs, zipPath) {
-				subFS, err := vfs.Sub(zipPath)
+				subFS, err := vfs.SubCreate(zipPath)
 				if err != nil {
 					t.Fatalf("[%s] failed to create zip via vfs.Sub: %v", be, err)
 				}
@@ -642,7 +642,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 						zp = fmt.Sprintf("vfs://%s/test%d.zip", be, i)
 					}
 					if writefs.IsWriteable(vfs, zp) {
-						subFS, err := vfs.Sub(zp)
+						subFS, err := vfs.SubCreate(zp)
 						if err != nil {
 							t.Fatalf("failed to create zip %s via vfs.Sub: %v", zp, err)
 						}
@@ -759,7 +759,7 @@ func TestZipAsFolder_Stat(t *testing.T) {
 	defer vfs.Close()
 
 	zipPath := "vfs://mem/test.zip"
-	subFS, err := vfs.Sub(zipPath)
+	subFS, err := vfs.SubCreate(zipPath)
 	if err != nil {
 		t.Fatalf("failed to create zip via vfs.Sub: %v", err)
 	}
@@ -931,7 +931,7 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 				} else {
 					name = fmt.Sprintf("vfs://%s/test%d.zip", be, i)
 				}
-				subFS, err := vfs.Sub(name)
+				subFS, err := vfs.SubCreate(name)
 				if err != nil {
 					t.Fatalf("[%s] failed to create zip %s via vfs.Sub: %v", be, name, err)
 				}

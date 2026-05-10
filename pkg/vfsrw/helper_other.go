@@ -4,7 +4,6 @@ package vfsrw
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -28,17 +27,15 @@ func AddLocal(fSys fs.FS) error {
 }
 
 func pathToVFSPath(pathStr string) (string, string, error) {
-	if pathStr == "" {
-		return "", "", errors.New("path is empty")
-	}
-	if !filepath.IsAbs(pathStr) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return "", "", errors.Wrap(err, "cannot get current working directory")
-		}
-		pathStr = filepath.Join(wd, pathStr)
-	}
 	pathStr = filepath.ToSlash(filepath.Clean(pathStr))
+	var err error
+	if !filepath.IsAbs(pathStr) {
+		pathStr, err = filepath.Abs(pathStr)
+		if err != nil {
+			return "", "", errors.Wrap(err, "cannot get absolute path")
+		}
+		pathStr = filepath.ToSlash(pathStr)
+	}
 	pathStr = strings.TrimPrefix(pathStr, "/")
 	return "root", pathStr, nil
 }

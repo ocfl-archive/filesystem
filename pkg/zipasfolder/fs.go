@@ -35,8 +35,7 @@ func (fc *fileCloser) Close() error {
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only
 // it implements readwritefs.ReadWriteFS, fs.ReadDirFS, fs.ReadFileFS, basefs.CloserFS
 func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
-	_logger := logger.With().Str("class", "zipAsFolderFS").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("class", "zipAsFolderFS").Logger())
 	f := &zipAsFolderFS{
 		baseFS:   baseFS,
 		readOnly: readOnly,
@@ -343,7 +342,7 @@ func isZipFile(name string) bool {
 }
 
 func expandZipFile(name string) (zipFile string, zipPath string, isZip bool) {
-	name = filepath.ToSlash(filepath.Clean(name))
+	name = clearPath(name)
 	if name == "." {
 		return ".", "", false
 	}

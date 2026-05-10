@@ -16,6 +16,17 @@ type aferoFSRW struct {
 	logger zLogger.ZLogger
 }
 
+func (m *aferoFSRW) SubCreate(dir string) (fs.FS, error) {
+	if err := m.MkDir(dir); err != nil {
+		return nil, errors.Wrapf(err, "cannot create subdirectory '%s'", dir)
+	}
+	return m.Sub(dir)
+}
+
+func (m *aferoFSRW) RealPath(path string) string {
+	return filepath.ToSlash(filepath.Clean(path))
+}
+
 func NewFS(fsys afero.Fs, logger zLogger.ZLogger) (*aferoFSRW, error) {
 	return &aferoFSRW{
 		fs:     fsys,
