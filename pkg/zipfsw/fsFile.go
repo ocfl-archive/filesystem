@@ -40,8 +40,18 @@ func NewFSFile(baseFS fs.FS, path string, noCompression bool, logger zLogger.ZLo
 		return nil, errors.Wrap(err, "cannot create zipFSRW")
 	}
 
+	var zFS *zipFSW
+	switch t := zipFSRWBase.(type) {
+	case *zipFSW:
+		zFS = t
+	case *zipFSWCloser:
+		zFS = t.zipFSW
+	default:
+		return nil, errors.Errorf("unsupported type %T for zipFSRWBase", zipFSRWBase)
+	}
+
 	return &fsFile{
-		zipFSW:      zipFSRWBase,
+		zipFSW:      zFS,
 		path:        path,
 		writerPath:  writerPath,
 		baseFS:      baseFS,

@@ -12,15 +12,37 @@ import (
 	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
-func NewFS(writer io.Writer, noCompression bool, name string, logger zLogger.ZLogger) (*zipFSW, error) {
+type zipFSWCloser struct {
+	*zipFSW
+	writer io.WriteCloser
+}
+
+func (z *zipFSWCloser) Close() error {
+	defer func(writer io.WriteCloser) {
+		err := writer.Close()
+		if err != nil {
+			z.zipFSW.logger.Error().Err(err).Msg("error closing writer")
+		}
+	}(z.writer)
+	return errors.WithStack(z.zipFSW.Close())
+}
+
+func NewFS(writer io.Writer, noCompression bool, name string, logger zLogger.ZLogger) (fs.FS, error) {
 	zipWriter := zip.NewWriter(writer)
-	return &zipFSW{
+	zFS := &zipFSW{
 		zipWriter:     zipWriter,
 		newFiles:      []string{},
 		noCompression: noCompression,
 		name:          name,
 		logger:        logger,
-	}, nil
+	}
+	if writeCloser, ok := writer.(io.WriteCloser); ok {
+		return &zipFSWCloser{
+			zipFSW: zFS,
+			writer: writeCloser,
+		}, nil
+	}
+	return zFS, nil
 }
 
 type zipFSW struct {

@@ -687,7 +687,7 @@ func TestZipAsFolder_CacheLimit(t *testing.T) {
 
 			if writefs.IsWriteable(vfs, zipPath1) {
 				for i, zp := range []string{zipPath1, zipPath2, zipPath3} {
-					subFS, err := vfs.Sub(zp)
+					subFS, err := vfs.SubCreate(zp)
 					if err != nil {
 						t.Fatalf("failed to create zip %s via vfs.Sub: %v", zp, err)
 					}

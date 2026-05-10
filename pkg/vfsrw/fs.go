@@ -316,6 +316,7 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	zipFS, err := zipfsw.NewFS(fp, true, dir, vfs.logger)
 	if err != nil {
 		return nil, errors.WithStack(err)
