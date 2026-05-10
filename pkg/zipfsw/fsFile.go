@@ -35,7 +35,7 @@ func NewFSFile(baseFS fs.FS, path string, noCompression bool, logger zLogger.ZLo
 		mainWriter = zipFPBuffer
 	}
 
-	zipFSRWBase, err := NewFS(mainWriter, noCompression, fmt.Sprintf("fsFile(%v/%s)", baseFS, path), logger)
+	zipFSRWBase, err := NewFS(mainWriter, true, noCompression, fmt.Sprintf("fsFile(%v/%s)", baseFS, path), logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create zipFSRW")
 	}

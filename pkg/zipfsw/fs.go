@@ -27,7 +27,13 @@ func (z *zipFSWCloser) Close() error {
 	return errors.WithStack(z.zipFSW.Close())
 }
 
-func NewFS(writer io.Writer, noCompression bool, name string, logger zLogger.ZLogger) (fs.FS, error) {
+// NewFS creates a new zip file system.
+// The writer is used to writing the zip file.
+// If closeWriter is true and writer implements io.WriteCloser, the writer will be closed when the file system is closed.
+// If noCompression is true, the files will be stored without compression.
+// The name is used for identification (e.g. in Equal).
+// The logger is used for logging errors.
+func NewFS(writer io.Writer, closeWriter bool, noCompression bool, name string, logger zLogger.ZLogger) (fs.FS, error) {
 	zipWriter := zip.NewWriter(writer)
 	zFS := &zipFSW{
 		zipWriter:     zipWriter,
@@ -36,7 +42,7 @@ func NewFS(writer io.Writer, noCompression bool, name string, logger zLogger.ZLo
 		name:          name,
 		logger:        logger,
 	}
-	if writeCloser, ok := writer.(io.WriteCloser); ok {
+	if writeCloser, ok := writer.(io.WriteCloser); ok && closeWriter {
 		return &zipFSWCloser{
 			zipFSW: zFS,
 			writer: writeCloser,
