@@ -5,9 +5,11 @@ go 1.26
 require (
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.6.0
+	github.com/JuniorGuerra/sftp_test_server v0.0.0-20250820025246-084f6c603d9c
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/je4/trustutil/v2 v2.0.31
 	github.com/je4/utils/v2 v2.0.68
+	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73
 	github.com/maypok86/otter/v2 v2.3.0
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/pkg/sftp v1.13.10
@@ -26,14 +28,12 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/JuniorGuerra/sftp_test_server v0.0.0-20250820025246-084f6c603d9c // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/google/certificate-transparency-go v1.3.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
