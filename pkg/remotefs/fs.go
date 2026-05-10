@@ -19,8 +19,7 @@ import (
 // todo: add jwt bearer token
 
 func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Closer, jwtKey string, readOnly bool, logger zLogger.ZLogger) (*remoteFSRW, error) {
-	_logger := logger.With().Str("class", "remoteFSRW").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("class", "remoteFSRW").Logger())
 
 	return &remoteFSRW{
 		client: &http.Client{

@@ -104,8 +104,7 @@ func recurseDir(fsys fs.FS, name string) {
 func main0() {
 	flag.Parse()
 
-	_logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-	logger := &_logger
+	logger := new(zerolog.New(os.Stdout).With().Timestamp().Logger())
 
 	dirFS, _ := osfsrw.NewFS(*basedir, false, logger)
 	newFS, err := zipasfolder.NewFS(dirFS, 20, false, logger)
@@ -147,8 +146,7 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modTime t
 }
 
 func main() {
-	_logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
-	logger := &_logger
+	logger := new(zerolog.New(os.Stdout).With().Timestamp().Logger())
 	fszas, err := NewFSAbstractionZipAsFolder("test", "temp", "C:/", 20, logger)
 	if err != nil {
 		panic(err)

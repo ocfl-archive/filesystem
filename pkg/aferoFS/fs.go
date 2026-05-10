@@ -17,10 +17,9 @@ type aferoFSRW struct {
 }
 
 func NewFS(fsys afero.Fs, logger zLogger.ZLogger) (*aferoFSRW, error) {
-	_logger := logger.With().Str("class", "aferoFSRW").Logger()
 	return &aferoFSRW{
 		fs:     fsys,
-		logger: &_logger,
+		logger: new(logger.With().Str("class", "aferoFSRW").Logger()),
 	}, nil
 }
 

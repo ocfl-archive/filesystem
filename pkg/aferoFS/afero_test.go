@@ -13,8 +13,7 @@ import (
 
 func TestAferoFS(t *testing.T) {
 	out := zerolog.ConsoleWriter{Out: os.Stderr}
-	zlogger := zerolog.New(out).With().Timestamp().Logger()
-	var logger zLogger.ZLogger = &zlogger
+	var logger zLogger.ZLogger = new(zerolog.New(out).With().Timestamp().Logger())
 
 	t.Run("MemMapFS", func(t *testing.T) {
 		memFs := afero.NewMemMapFs()

@@ -315,8 +315,7 @@ func TestZipAsFolder_WebFS(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	logger := zerolog.New(os.Stderr)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 	vfs, err := vfsrw.NewFS(vfsrw.Config{
 		"web": &vfsrw.VFS{
 			Name:        "web",

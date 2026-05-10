@@ -28,8 +28,7 @@ func splitBucketDir(fullpath string) (bucket, dir string) {
 }
 
 func NewFS(miniResolverClient *resolver.MiniResolver, domain, vfs, dir string, closer []io.Closer, readOnly bool, logger zLogger.ZLogger) (*miniKVFSRW, error) {
-	_logger := logger.With().Str("class", "miniKVFSRW").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("class", "miniKVFSRW").Logger())
 
 	miniKVClient, err := resolver.NewClient[minikvstoreproto.MiniKVStoreClient](
 		miniResolverClient,

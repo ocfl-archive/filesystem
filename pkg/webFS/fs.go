@@ -17,8 +17,7 @@ import (
 )
 
 func NewFS(baseuri string, header map[string][]string, tlsInsecureSkipVerify bool, logger zLogger.ZLogger) (*webFSRW, error) {
-	_logger := logger.With().Str("class", "webFSRW").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("class", "webFSRW").Logger())
 
 	httpHeader := http.Header{}
 	if header == nil {

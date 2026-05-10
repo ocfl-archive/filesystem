@@ -10,8 +10,7 @@ import (
 )
 
 func TestWebFS_SeekerReaderAt(t *testing.T) {
-	logger := zerolog.New(os.Stderr)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 	wfs, err := NewFS(
 		"https://raw.githubusercontent.com/%%PATH%%",
 		nil,

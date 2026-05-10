@@ -13,8 +13,7 @@ import (
 )
 
 func TestVFS_MemFS(t *testing.T) {
-	logger := zerolog.New(os.Stderr)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
 
 	cfg := vfsrw.Config{
 		"testmem": &vfsrw.VFS{

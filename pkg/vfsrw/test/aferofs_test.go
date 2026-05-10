@@ -15,8 +15,7 @@ import (
 
 func TestVFS_AferoFS(t *testing.T) {
 	out := zerolog.ConsoleWriter{Out: os.Stderr}
-	logger := zerolog.New(out)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(out))
 
 	cfg := vfsrw.Config{
 		"testafero": &vfsrw.VFS{
@@ -94,8 +93,7 @@ func TestVFS_AferoFS(t *testing.T) {
 
 func TestVFS_AferoFS_ComplexSchemes(t *testing.T) {
 	out := zerolog.ConsoleWriter{Out: os.Stderr}
-	logger := zerolog.New(out)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(out))
 
 	cfg := vfsrw.Config{
 		"mem1": &vfsrw.VFS{
@@ -154,8 +152,7 @@ func TestVFS_AferoFS_ComplexSchemes(t *testing.T) {
 
 func TestVFS_AferoFS_FileInterfaces(t *testing.T) {
 	out := zerolog.ConsoleWriter{Out: os.Stderr}
-	logger := zerolog.New(out)
-	var _logger zLogger.ZLogger = &logger
+	var _logger zLogger.ZLogger = new(zerolog.New(out))
 
 	cfg := vfsrw.Config{
 		"testafero": &vfsrw.VFS{

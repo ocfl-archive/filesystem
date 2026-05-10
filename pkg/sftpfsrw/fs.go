@@ -16,8 +16,7 @@ import (
 )
 
 func NewFS(addr string, config *ssh.ClientConfig, baseDir string, numSessions uint, readOnly bool, logger zLogger.ZLogger) (*sftpFSRW, error) {
-	_logger := logger.With().Str("class", "sftpFSRW").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("class", "sftpFSRW").Logger())
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot connect to '%s'", addr)

@@ -13,8 +13,7 @@ import (
 )
 
 func NewFS(dir string, readOnly bool, logger zLogger.ZLogger) (*osFSRW, error) {
-	_logger := logger.With().Str("class", "osFSRW").Logger()
-	logger = &_logger
+	logger = new(logger.With().Str("class", "osFSRW").Logger())
 	var err error
 	if dir == "" || dir == "." {
 		dir, err = os.Getwd()

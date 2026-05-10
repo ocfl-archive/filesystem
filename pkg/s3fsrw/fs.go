@@ -214,8 +214,7 @@ func (s3FS *s3FSRW) ReadDir(path string) ([]fs.DirEntry, error) {
 		if objectInfo.Err != nil {
 			return nil, errors.Wrapf(objectInfo.Err, "cannot read '%s'", path)
 		}
-		oiHelper := objectInfo
-		result = append(result, writefs.NewDirEntry(NewFileInfo(&oiHelper)))
+		result = append(result, writefs.NewDirEntry(NewFileInfo(new(objectInfo))))
 	}
 	return result, nil
 }
