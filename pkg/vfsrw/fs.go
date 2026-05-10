@@ -282,6 +282,19 @@ func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
 	if subFS, ok := fSys.(writefs.SubFS); ok {
 		return subFS.Sub(dir)
 	}
+	if strings.HasSuffix(dir, ".zip") {
+		conf, err := vfs.getConfig(dir)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
+		}
+		if conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
+			_, err := fs.Stat(vfs, dir)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot stat zip file '%s'", dir)
+			}
+			return zipfsw.NewFSFile(fSys, dir, false, vfs.logger)
+		}
+	}
 	return writefs.NewSubFS(fSys, dir)
 }
 
