@@ -74,6 +74,11 @@ type zipFSW struct {
 	writer        io.Writer
 }
 
+func (zfsrw *zipFSW) MkDir(path string) error {
+	// in zip file, directories do not exists
+	return nil
+}
+
 func (zfsrw *zipFSW) Fullpath(name string) (string, error) {
 	return name, nil
 }
@@ -155,6 +160,7 @@ var (
 	_ fs.FS              = (*zipFSW)(nil)
 	_ fmt.Stringer       = (*zipFSW)(nil)
 	_ writefs.CreateFS   = (*zipFSW)(nil)
+	_ writefs.MkDirFS    = (*zipFSW)(nil)
 	_ writefs.CloseFS    = (*zipFSW)(nil)
 	_ writefs.FullpathFS = (*zipFSW)(nil)
 	_ writefs.EqualFS    = (*zipFSW)(nil)

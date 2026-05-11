@@ -275,12 +275,12 @@ func (vfs *vFSRW) RealPath(path string) string {
 }
 
 func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
-	fSys, _, err := vfs.getFS(dir)
+	fSys, pathStr, err := vfs.getFS(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get FS for path '%s'", dir)
 	}
 	if subFS, ok := fSys.(writefs.SubFS); ok {
-		return subFS.Sub(dir)
+		return subFS.Sub(pathStr)
 	}
 	if strings.HasSuffix(dir, ".zip") {
 		conf, err := vfs.getConfig(dir)
@@ -290,12 +290,12 @@ func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
 		if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
 			_, err := fs.Stat(vfs, dir)
 			if err != nil {
-				return nil, errors.Wrapf(err, "cannot stat zip file '%s'", dir)
+				return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
 			}
 			return zipfsw.NewFSFile(fSys, dir, false, vfs.logger)
 		}
 	}
-	return writefs.NewSubFS(fSys, dir)
+	return writefs.NewSubFS(fSys, pathStr)
 }
 
 func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
