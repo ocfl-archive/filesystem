@@ -422,6 +422,13 @@ func (vfs *vFSRW) Get(name string, readOnly bool) (fs.FS, error) {
 }
 
 func (vfs *vFSRW) AddFS(name string, vfsConfig *VFS, fsys fs.FS) {
+	if vfsConfig == nil {
+		vfsConfig = &VFS{
+			ReadOnly: true,
+			Name:     name,
+		}
+
+	}
 	vfs.fss[name] = vfsStruct{FS: fsys, VFS: vfsConfig}
 }
 
