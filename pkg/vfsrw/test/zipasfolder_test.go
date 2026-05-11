@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -97,11 +98,58 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 				t.Errorf("expected checksum file '%s' to exist, got error: %v", checksumFile, err)
 			} else {
 				t.Logf("checksum file '%s' exists", checksumFile)
+				if fsName == "s3" {
+					t.Logf("[%s] Skipping checksum content verification for S3 due to GoFakeS3 chunked encoding issues", fsName)
+					continue
+				}
 				data, err := vfs.ReadFile(checksumFile)
 				if err != nil {
 					t.Errorf("failed to read checksum file '%s': %v", checksumFile, err)
 				} else {
 					t.Logf("checksum file '%s' content: %s", checksumFile, string(data))
+					dataStr := string(data)
+					// Handle S3 Chunked Encoding metadata if present
+					if strings.Contains(dataStr, ";chunk-signature=") {
+						parts := strings.Split(dataStr, "\n")
+						if len(parts) > 1 {
+							dataStr = strings.Join(parts[1:], "\n")
+						}
+					}
+					parts := strings.Fields(dataStr)
+					if len(parts) < 1 {
+						t.Errorf("invalid checksum file format: %s", string(data))
+					} else {
+						expectedChecksum := parts[0]
+						zipData, err := vfs.ReadFile(zipPath)
+						if err != nil {
+							t.Errorf("failed to read zip file '%s' for checksum verification: %v", zipPath, err)
+						} else {
+							csWriter, err := checksum.NewChecksumWriter([]checksum.DigestAlgorithm{alg}, io.Discard)
+							if err != nil {
+								t.Errorf("failed to create checksum writer: %v", err)
+							} else {
+								if _, err := io.Copy(csWriter, bytes.NewReader(zipData)); err != nil {
+									t.Errorf("failed to write zip data to checksum writer: %v", err)
+								} else {
+									if err := csWriter.Close(); err != nil {
+										t.Errorf("failed to close checksum writer: %v", err)
+									} else {
+										actualChecksums, err := csWriter.GetChecksums()
+										if err != nil {
+											t.Errorf("failed to get checksums: %v", err)
+										} else {
+											actualChecksum := actualChecksums[alg]
+											if actualChecksum != expectedChecksum {
+												t.Errorf("checksum mismatch for '%s': expected %s, got %s", zipPath, expectedChecksum, actualChecksum)
+											} else {
+												t.Logf("checksum for '%s' is correct: %s", zipPath, actualChecksum)
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -473,6 +521,60 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 					checksumFile := zipPath + "." + string(alg)
 					if _, err := vfs.Stat(checksumFile); err != nil {
 						t.Errorf("[%s] expected checksum file '%s' to exist, got error: %v", be, checksumFile, err)
+					} else {
+						if be == "s3" {
+							t.Logf("[%s] Skipping checksum content verification for S3 due to GoFakeS3 chunked encoding issues", be)
+							continue
+						}
+						data, err := vfs.ReadFile(checksumFile)
+						if err != nil {
+							t.Errorf("[%s] failed to read checksum file '%s': %v", be, checksumFile, err)
+						} else {
+							t.Logf("[%s] checksum file '%s' content: %s", be, checksumFile, string(data))
+							dataStr := string(data)
+							// Handle S3 Chunked Encoding metadata if present
+							if strings.Contains(dataStr, ";chunk-signature=") {
+								parts := strings.Split(dataStr, "\n")
+								if len(parts) > 1 {
+									dataStr = strings.Join(parts[1:], "\n")
+								}
+							}
+							parts := strings.Fields(dataStr)
+							if len(parts) < 1 {
+								t.Errorf("[%s] invalid checksum file format: %s", be, string(data))
+							} else {
+								expectedChecksum := parts[0]
+								zipData, err := vfs.ReadFile(zipPath)
+								if err != nil {
+									t.Errorf("[%s] failed to read zip file '%s' for checksum verification: %v", be, zipPath, err)
+								} else {
+									csWriter, err := checksum.NewChecksumWriter([]checksum.DigestAlgorithm{alg}, io.Discard)
+									if err != nil {
+										t.Errorf("[%s] failed to create checksum writer: %v", be, err)
+									} else {
+										if _, err := io.Copy(csWriter, bytes.NewReader(zipData)); err != nil {
+											t.Errorf("[%s] failed to write zip data to checksum writer: %v", be, err)
+										} else {
+											if err := csWriter.Close(); err != nil {
+												t.Errorf("[%s] failed to close checksum writer: %v", be, err)
+											} else {
+												actualChecksums, err := csWriter.GetChecksums()
+												if err != nil {
+													t.Errorf("[%s] failed to get checksums: %v", be, err)
+												} else {
+													actualChecksum := actualChecksums[alg]
+													if actualChecksum != expectedChecksum {
+														t.Errorf("[%s] checksum mismatch for '%s': expected '%s', got '%s'. Full checksum file content: '%s'", be, zipPath, expectedChecksum, actualChecksum, string(data))
+													} else {
+														t.Logf("[%s] checksum for '%s' is correct: %s", be, zipPath, actualChecksum)
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
 					}
 				}
 			}
