@@ -61,12 +61,21 @@ type Afero struct {
 	BaseDir string `toml:"basedir"`
 }
 
+type AESConfig struct {
+	Enable       bool             `toml:"enable"`
+	KeepassFile  config.EnvString `toml:"keepassfile"`
+	KeepassEntry config.EnvString `toml:"keepassentry"`
+	KeepassKey   config.EnvString `toml:"keepasskey"`
+	IV           config.EnvString `toml:"iv"`
+}
+
 type ZipAsFolder struct {
 	Enabled   bool                       `toml:"enabled"`
 	Digests   []checksum.DigestAlgorithm `toml:"digests"`
 	CacheSize uint                       `toml:"cachesize"`
 	Compress  bool                       `toml:"compress"`
 	ReadOnly  bool                       `toml:"readonly"`
+	AES       *AESConfig                 `toml:"aes"`
 }
 
 type VFS struct {

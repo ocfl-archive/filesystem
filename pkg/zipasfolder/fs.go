@@ -293,6 +293,11 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
 	}
 
+	if zipPath == "" {
+		decRef(zipFS)
+		return fsys.baseFS.Open(zipFile)
+	}
+
 	rc, err := zipFS.Open(zipPath)
 	if err != nil {
 		decRef(zipFS)
@@ -338,7 +343,7 @@ func (fsys *zipAsFolderFS) ClearUnlocked() error {
 	return nil
 }
 func isZipFile(name string) bool {
-	return strings.ToLower(filepath.Ext(name)) == ".zip"
+	return strings.ToLower(filepath.Ext(name)) == ".zip" || strings.ToLower(filepath.Ext(name)) == ".zip#zip"
 }
 
 func expandZipFile(name string) (zipFile string, zipPath string, isZip bool) {
@@ -351,6 +356,12 @@ func expandZipFile(name string) (zipFile string, zipPath string, isZip bool) {
 		if isZipFile(parts[i]) {
 			zipFile = strings.Join(parts[:i+1], "/")
 			zipPath = strings.Join(parts[i+1:], "/")
+			if strings.HasSuffix(zipFile, "#zip") {
+				zipFile = strings.TrimSuffix(zipFile, "#zip")
+				if zipPath == "" {
+					return zipFile, "", false
+				}
+			}
 			isZip = true
 			return
 		}

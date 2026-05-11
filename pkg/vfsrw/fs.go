@@ -328,7 +328,51 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	}
 	fp, err := writefs.Create(vfs, dir)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "cannot create zip file '%s'", dir)
+	}
+	var encFP io.WriteCloser
+	if conf.ZipAsFolder.AES != nil && conf.ZipAsFolder.AES.Enable {
+		_ = encFP
+		return nil, errors.Errorf("cannot create encrypted zip file '%s' not implemented", dir)
+		//todo: implement encryption
+		/*
+			aesConfig := conf.ZipAsFolder.AES
+			encFileName := fmt.Sprintf("%s.aes", dir)
+			encFP, err = writefs.Create(vfs, encFileName)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot create encrypted zip file '%s.aes'", dir)
+			}
+			db, err := keepass2kms.LoadKeePassDBFromFile(aesConfig.KeepassFile.String(), aesConfig.KeepassKey.String())
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot load keepass file '%s'", aesConfig.KeepassFile)
+			}
+			client, err := keepass2kms.NewClient(db, filepath.Base(aesConfig.KeepassFile.String()))
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot create keepass2kms client")
+			}
+			registry.RegisterKMSClient(client)
+			// todo: check for existence of key
+
+			// add a buffer to the file
+			newEncFPBuffer := bufio.NewWriterSize(encFP, 1024*1024)
+
+			csEncWriter, err := checksum.NewChecksumWriter(conf.ZipAsFolder.Digests, newEncFPBuffer)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot create checksum writer for '%s'", encFileName)
+			}
+
+			encWriter, err := encrypt.NewEncryptWriterAESGCM(csEncWriter, []byte(path), nil)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot create encrypt writer for '%s'", encFileName)
+			}
+
+			handle := encWriter.GetKeysetHandle()
+
+			if err := fsFactory.Register(zipfsrw.NewCreateFSEncryptedChecksumFunc(noCompression, zipDigests, string(aesConfig.KeepassEntry), logger.Logger()), "\\.zip$", writefs.HighFS); err != nil {
+				return nil, errors.Wrap(err, "cannot register FSEncryptedChecksum")
+			}
+		*/
+
 	}
 	zipFS, err := zipfsw.NewFS(
 		fp,
