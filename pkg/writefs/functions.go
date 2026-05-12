@@ -180,40 +180,39 @@ func Copy(srcFS fs.FS, src string, dstFS fs.FS, dst string) (int64, error) {
 			return _fsys.Copy(src, dst)
 		}
 		return _copy(srcFS, src, dst)
-	} else {
-		var srcFP io.ReadCloser
-		var dstFP io.WriteCloser
-		var err error
-		if srcFS == nil {
-			srcFP, err = os.Open(src)
-			if err != nil {
-				return 0, errors.Wrapf(err, "cannot open source '%s'", src)
-			}
-		} else {
-			srcFP, err = srcFS.Open(src)
-			if err != nil {
-				return 0, errors.Wrapf(err, "cannot open source '%s'", src)
-			}
-		}
-		defer srcFP.Close()
-		if dstFS == nil {
-			dstFP, err = os.Create(dst)
-			if err != nil {
-				return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)
-			}
-		} else {
-			dstFP, err = Create(dstFS, dst)
-			if err != nil {
-				return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)
-			}
-		}
-		defer dstFP.Close()
-		n, err := io.Copy(dstFP, srcFP)
-		if err != nil {
-			return 0, errors.Wrapf(err, "cannot copy '%s' to '%s'", src, dst)
-		}
-		return n, nil
 	}
+	var srcFP io.ReadCloser
+	var dstFP io.WriteCloser
+	var err error
+	if srcFS == nil {
+		srcFP, err = os.Open(src)
+		if err != nil {
+			return 0, errors.Wrapf(err, "cannot open source '%s'", src)
+		}
+	} else {
+		srcFP, err = srcFS.Open(src)
+		if err != nil {
+			return 0, errors.Wrapf(err, "cannot open source '%s'", src)
+		}
+	}
+	defer srcFP.Close()
+	if dstFS == nil {
+		dstFP, err = os.Create(dst)
+		if err != nil {
+			return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)
+		}
+	} else {
+		dstFP, err = Create(dstFS, dst)
+		if err != nil {
+			return 0, errors.Wrapf(err, "cannot open destination '%s'", dst)
+		}
+	}
+	defer dstFP.Close()
+	n, err := io.Copy(dstFP, srcFP)
+	if err != nil {
+		return 0, errors.Wrapf(err, "cannot copy '%s' to '%s'", src, dst)
+	}
+	return n, nil
 }
 
 func Join(fsys fs.FS, elems ...string) string {

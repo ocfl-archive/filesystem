@@ -172,18 +172,16 @@ func (zfs *zipFS) Open(name string) (fs.File, error) {
 				if rseeker, ok := w.(io.ReadSeeker); ok {
 					zfs.IncRef()
 					return NewFile[io.ReadSeeker](f.FileInfo(), rseeker, zfs.mutex, zfs.DecRef), nil
-				} else {
-					zfs.IncRef()
-					return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
-				}
-			} else {
-				w, err := f.Open()
-				if err != nil {
-					return nil, errors.Wrapf(err, "failed to open file '%s'", name)
 				}
 				zfs.IncRef()
 				return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
 			}
+			w, err := f.Open()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to open file '%s'", name)
+			}
+			zfs.IncRef()
+			return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
 		}
 	}
 	return nil, fs.ErrNotExist

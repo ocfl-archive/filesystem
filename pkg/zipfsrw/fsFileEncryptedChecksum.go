@@ -130,10 +130,9 @@ func (zfsrw *fsFileEncryptedChecksums) Close() error {
 		jsonBytes, err := json.Marshal(ts)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal %s", keyFileName)
-		} else {
-			if _, err := writefs.WriteFile(zfsrw.baseFS, keyFileName, jsonBytes); err != nil {
-				return errors.Wrapf(err, "cannot write %s", keyFileName)
-			}
+		}
+		if _, err := writefs.WriteFile(zfsrw.baseFS, keyFileName, jsonBytes); err != nil {
+			return errors.Wrapf(err, "cannot write %s", keyFileName)
 		}
 
 		checksums, err := zfsrw.csEncWriter.GetChecksums()

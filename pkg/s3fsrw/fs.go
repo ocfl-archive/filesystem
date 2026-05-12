@@ -21,7 +21,7 @@ import (
 func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug bool, tlsConfig *tls.Config, dnsNetwork, dnsAddress string, readOnly bool, logger zLogger.ZLogger) (*s3FSRW, error) {
 	_logger := logger.With().Str("class", "s3FSRW").Logger()
 	var err error
-	fs := &s3FSRW{
+	fSys := &s3FSRW{
 		client:   nil,
 		readOnly: readOnly,
 		//		bucket:   bucket,
@@ -67,7 +67,7 @@ func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug 
 			// ResponseHeaders,
 		)
 	}
-	fs.client, err = minio.New(endpoint, &minio.Options{
+	fSys.client, err = minio.New(endpoint, &minio.Options{
 		Creds:     credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
 		Secure:    useSSL,
 		Region:    region,
@@ -76,7 +76,7 @@ func NewFS(endpoint, accessKeyID, secretAccessKey, region string, useSSL, debug 
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create s3 client instance")
 	}
-	return fs, nil
+	return fSys, nil
 }
 
 type s3FSRW struct {
@@ -418,9 +418,8 @@ func (s3FS *s3FSRW) Stat(path string) (fs.FileInfo, error) {
 		if s3FS.IsNotExist(err) {
 			if s3FS.hasContent(path) {
 				return writefs.NewFileInfoDir(path), nil
-			} else {
-				return nil, fs.ErrNotExist
 			}
+			return nil, fs.ErrNotExist
 		}
 		return nil, errors.Wrapf(err, "cannot stat '%s'", path)
 	}

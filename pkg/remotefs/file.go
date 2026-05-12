@@ -52,6 +52,7 @@ func (f *file) init(pos int64) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot send request for '%s'", f.url)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		return errors.Errorf("invalid status '%s' for '%s'", resp.Status, f.url)
 	}
@@ -161,9 +162,8 @@ func (f *file) Read(p []byte) (n int, err error) {
 		if contentRangeStr != "" {
 			if matches := contentRangeRegexp.FindStringSubmatch(contentRangeStr); matches == nil {
 				return 0, errors.Errorf("invalid content range %s for '%s' with range '%s'", contentRangeStr, f.url, fmt.Sprintf("bytes=%d-%d", f.pos, min(f.pos+rangeLength-1, f.size-1)))
-			} else {
-				// todo: check content range
 			}
+			// todo: check content range
 		}
 		f.rc = resp.Body
 	}

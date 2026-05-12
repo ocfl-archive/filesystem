@@ -336,6 +336,7 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	}
 	var encFP io.WriteCloser
 	if conf != nil && conf.ZipAsFolder.AES != nil && conf.ZipAsFolder.AES.Enable {
+		_ = fp.Close()
 		_ = encFP
 		return nil, errors.Errorf("cannot create encrypted zip file '%s' not implemented", dir)
 		//todo: implement encryption
@@ -402,11 +403,11 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 }
 
 func (vfs *vFSRW) IsWriteable(name string) bool {
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		return false
 	}
-	return writefs.IsWriteable(vFS, path)
+	return writefs.IsWriteable(vFS, pathStr)
 }
 
 func (vfs *vFSRW) Get(name string, readOnly bool) (fs.FS, error) {
@@ -495,11 +496,11 @@ func (vfs *vFSRW) Close() error {
 }
 
 func (vfs *vFSRW) Remove(name string) error {
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = writefs.Remove(vFS, path)
+	err = writefs.Remove(vFS, pathStr)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -530,11 +531,11 @@ func (vfs *vFSRW) Rename(oldPath, newPath string) error {
 }
 
 func (vfs *vFSRW) MkDir(name string) error {
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = writefs.MkDir(vFS, path)
+	err = writefs.MkDir(vFS, pathStr)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -542,11 +543,11 @@ func (vfs *vFSRW) MkDir(name string) error {
 }
 
 func (vfs *vFSRW) Create(name string) (writefs.FileWrite, error) {
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	data, err := writefs.Create(vFS, path)
+	data, err := writefs.Create(vFS, pathStr)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -563,26 +564,26 @@ func (vfs *vFSRW) String() string {
 
 func (vfs *vFSRW) Stat(name string) (fs.FileInfo, error) {
 	vfs.logger.Debug().Msgf("VFS.Stat('%s')", name)
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		vfs.logger.Debug().Msgf("VFS.Stat('%s') -> getFS error: %v", name, err)
 		return nil, errors.WithStack(err)
 	}
-	vfs.logger.Debug().Msgf("VFS.Stat('%s') -> using FS for path '%s'", name, path)
-	data, err := fs.Stat(vFS, path)
+	vfs.logger.Debug().Msgf("VFS.Stat('%s') -> using FS for path '%s'", name, pathStr)
+	data, err := fs.Stat(vFS, pathStr)
 	if err != nil {
-		vfs.logger.Debug().Msgf("VFS.Stat('%s') -> fs.Stat('%s') error: %v", name, path, err)
+		vfs.logger.Debug().Msgf("VFS.Stat('%s') -> fs.Stat('%s') error: %v", name, pathStr, err)
 		return nil, errors.WithStack(err)
 	}
 	return data, nil
 }
 
 func (vfs *vFSRW) ReadFile(name string) ([]byte, error) {
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	data, err := fs.ReadFile(vFS, path)
+	data, err := fs.ReadFile(vFS, pathStr)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -590,11 +591,11 @@ func (vfs *vFSRW) ReadFile(name string) ([]byte, error) {
 }
 
 func (vfs *vFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
-	vFS, path, err := vfs.getFS(name)
+	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	de, err := fs.ReadDir(vFS, path)
+	de, err := fs.ReadDir(vFS, pathStr)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -602,11 +603,11 @@ func (vfs *vFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 func (vfs *vFSRW) Open(vfsPath string) (fs.File, error) {
-	vFS, path, err := vfs.getFS(vfsPath)
+	vFS, pathStr, err := vfs.getFS(vfsPath)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	fp, err := vFS.Open(path)
+	fp, err := vFS.Open(pathStr)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -614,7 +615,7 @@ func (vfs *vFSRW) Open(vfsPath string) (fs.File, error) {
 }
 
 func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
-	name, path, err := MatchPath(vfsPath)
+	name, pathStr, err := MatchPath(vfsPath)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
@@ -622,7 +623,7 @@ func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
 	if !ok {
 		return nil, "", errors.Errorf("vfs '%s' not configured for path '%s'", name, vfsPath)
 	}
-	return vfsStruct.FS, path, nil
+	return vfsStruct.FS, pathStr, nil
 }
 func (vfs *vFSRW) getConfig(vfsPath string) (*VFS, error) {
 	name, _, err := MatchPath(vfsPath)

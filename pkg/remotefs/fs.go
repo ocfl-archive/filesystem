@@ -109,6 +109,7 @@ func (d *remoteFSRW) Remove(path string) error {
 		req.Header.Set("Authorization", "Bearer "+tokenString)
 	}
 	resp, err := d.client.Do(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return errors.Wrapf(err, "cannot delete '%s/%s/%s'", d.addr, d.vfs, path)
 	}

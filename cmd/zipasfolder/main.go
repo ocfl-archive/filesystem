@@ -151,8 +151,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	url, err := url.Parse("file://test/ocfl_bang.zip/id_blah-blubb/v1/content/data/collage_files/15/36_39.jpeg")
-	fp, err := fszas.OpenRead(url)
+	u, err := url.Parse("file://test/ocfl_bang.zip/id_blah-blubb/v1/content/data/collage_files/15/36_39.jpeg")
+	fp, err := fszas.OpenRead(u)
 	if err != nil {
 		panic(err)
 	}
