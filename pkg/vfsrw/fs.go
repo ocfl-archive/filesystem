@@ -267,38 +267,39 @@ type vFSRW struct {
 }
 
 func (vfs *vFSRW) RealPath(path string) string {
-	_, newPath, err := MatchPath(path)
+	name, newPath, err := MatchPath(path)
 	if err != nil {
 		vfs.logger.Error().Err(err).Msgf("cannot match path '%s'", path)
 		return path
 	}
-	return newPath
+	return fmt.Sprintf("vfs://%s/%s", name, newPath)
 }
 
 func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
-	fSys, pathStr, err := vfs.getFS(dir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot get FS for path '%s'", dir)
-	}
-	if subFS, ok := fSys.(writefs.SubFS); ok {
-		return subFS.Sub(pathStr)
-	}
 	/*
-		if strings.HasSuffix(dir, ".zip") {
-			conf, err := vfs.getConfig(dir)
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
-			}
-			if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
-				if _, err := fs.Stat(vfs, dir); err != nil {
-					return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
-				}
-				return zipfsw.NewFSFile(fSys, pathStr, false, vfs.logger)
-			}
+		fSys, pathStr, err := vfs.getFS(dir)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot get FS for path '%s'", dir)
 		}
+			if subFS, ok := fSys.(writefs.SubFS); ok {
+				return subFS.Sub(pathStr)
+			}
+
+				if strings.HasSuffix(dir, ".zip") {
+					conf, err := vfs.getConfig(dir)
+					if err != nil {
+						return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
+					}
+					if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
+						if _, err := fs.Stat(vfs, dir); err != nil {
+							return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
+						}
+						return zipfsw.NewFSFile(fSys, pathStr, false, vfs.logger)
+					}
+				}
 
 	*/
-	return writefs.NewSubFS(fSys, pathStr)
+	return writefs.NewSubFS(vfs, dir)
 }
 
 func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
@@ -432,7 +433,23 @@ func (vfs *vFSRW) AddFS(name string, vfsConfig *VFS, fsys fs.FS) {
 		}
 
 	}
-	vfs.fss[name] = vfsStruct{FS: fsys, VFS: vfsConfig}
+	var xFS fs.FS = fsys
+	if vfsConfig.ZipAsFolder != nil && vfsConfig.ZipAsFolder.Enabled && vfsConfig.ZipAsFolder.CacheSize > 0 {
+		zFS, err := zipasfolder.NewFS(
+			fsys,
+			int(vfsConfig.ZipAsFolder.CacheSize),
+			time.Duration(vfsConfig.ZipAsFolder.Timeout),
+			vfsConfig.ReadOnly || vfsConfig.ZipAsFolder.ReadOnly,
+			vfs.logger,
+		)
+		if err != nil {
+			vfs.logger.Error().Err(err).Msgf("cannot create zipasfolder over '%v'", fsys)
+		} else {
+			xFS = zFS
+		}
+	}
+
+	vfs.fss[name] = vfsStruct{FS: xFS, VFS: vfsConfig}
 }
 
 func (vfs *vFSRW) Equal(fsys fs.FS) bool {
