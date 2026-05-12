@@ -73,6 +73,7 @@ type ZipAsFolder struct {
 	Enabled   bool                       `toml:"enabled"`
 	Digests   []checksum.DigestAlgorithm `toml:"digests"`
 	CacheSize uint                       `toml:"cachesize"`
+	Timeout   config.Duration            `toml:"timeout"`
 	Compress  bool                       `toml:"compress"`
 	ReadOnly  bool                       `toml:"readonly"`
 	AES       *AESConfig                 `toml:"aes"`

@@ -16,15 +16,15 @@ import (
 func TestVFS_SubZip(t *testing.T) {
 	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
 
-	// 1. VFS mit MemFS konfigurieren.
-	// WICHTIG: ZipAsFolder auf dem FS selbst ist hier NICHT nötig,
-	// da wir vfsrw.Sub testen wollen, welches die ZIP-Logik triggert,
-	// wenn die Config es erlaubt.
+	// 1. Configure VFS with MemFS.
+	// IMPORTANT: ZipAsFolder on the FS itself is NOT necessary here,
+	// because we want to test vfsrw.Sub, which triggers the ZIP logic
+	// if the config allows it.
 	cfg := vfsrw.Config{
 		"mem": &vfsrw.VFS{
 			Name:        "mem",
 			Type:        "afero",
-			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true}, // Erlaubt vfsrw.Sub ZIP-Handling zu machen
+			ZipAsFolder: &vfsrw.ZipAsFolder{Enabled: true}, // Allows vfsrw.Sub to do ZIP handling
 			Afero:       &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
@@ -35,11 +35,11 @@ func TestVFS_SubZip(t *testing.T) {
 	}
 	defer vfs.Close()
 
-	// 2. ZIP Datei Pfad definieren
+	// 2. Define ZIP file path
 	zipFile := "vfs://mem/test.zip"
 
-	// 3. vfs.Sub aufrufen. Da test.zip noch nicht existiert, sollte vfsrw.Sub
-	// ein neues zipfsrw (Write-Only/Create) erstellen, wenn ZipAsFolder aktiv ist.
+	// 3. Call vfs.Sub. Since test.zip doesn't exist yet, vfsrw.Sub
+	// should create a new zipfsrw (Write-Only/Create) if ZipAsFolder is active.
 	subFS, err := vfs.SubCreate(zipFile)
 	if err != nil {
 		t.Fatalf("failed to call vfs.Sub('%s'): %v", zipFile, err)
@@ -48,11 +48,11 @@ func TestVFS_SubZip(t *testing.T) {
 		t.Fatalf("vfs.Sub('%s') returned nil, nil", zipFile)
 	}
 
-	// 4. Testdaten schreiben im Sub-Filesystem
+	// 4. Write test data in the sub-filesystem
 	testFileName := "hello.txt"
 	testContent := []byte("hello from sub zip")
 
-	// Wir verwenden writefs.WriteFile um sicherzustellen, dass wir Schreiboperationen nutzen
+	// We use writefs.WriteFile to ensure we use write operations
 	n, err := writefs.WriteFile(subFS, testFileName, testContent)
 	if err != nil {
 		t.Fatalf("failed to write file in sub zip: %v", err)
@@ -61,7 +61,7 @@ func TestVFS_SubZip(t *testing.T) {
 		t.Fatalf("wrote %d bytes, expected %d", n, len(testContent))
 	}
 
-	// 5. ZIP schliessen (falls es ein Closer ist), um sicherzustellen, dass alles auf das zugrunde liegende FS geschrieben wird
+	// 5. Close ZIP (if it's a closer) to ensure everything is written to the underlying FS.
 	if closer, ok := subFS.(io.Closer); ok {
 		if err := closer.Close(); err != nil {
 			t.Fatalf("failed to close sub zip fs: %v", err)
@@ -70,14 +70,14 @@ func TestVFS_SubZip(t *testing.T) {
 		t.Log("subFS does not implement io.Closer")
 	}
 
-	// 6. Verifizieren, dass die ZIP-Datei im Haupt-VFS existiert
+	// 6. Verify that the ZIP file exists in the main VFS
 	if _, err := fs.Stat(vfs, zipFile); err != nil {
 		t.Fatalf("zip file does not exist after write: %v", err)
 	}
 
-	// 7. Jetzt die ZIP-Datei wieder öffnen (Read-Only) und Inhalt prüfen
-	// Da vfsrw.Sub nun zipfsw (write-only) verwendet, können wir nicht mehr über Sub lesen.
-	// Wir lesen die ZIP-Datei als Ganzes und verwenden archive/zip zur Verifizierung.
+	// 7. Now open the ZIP file again (Read-Only) and check content
+	// Since vfsrw.Sub now uses zipfsw (write-only), we can no longer read via Sub.
+	// We read the ZIP file as a whole and use archive/zip for verification.
 	t.Log("Verifying ZIP content manually since vfsrw.Sub is now write-only")
 
 	zipData, err := fs.ReadFile(vfs, zipFile)

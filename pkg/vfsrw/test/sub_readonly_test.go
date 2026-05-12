@@ -60,8 +60,8 @@ func TestVFS_SubReadOnly(t *testing.T) {
 	})
 
 	t.Run("Existing Zip should work even if ReadOnly", func(t *testing.T) {
-		// Dieser Test ist komplexer, da afero memfs standardmäßig nicht global ist.
-		// Für diesen Task reicht es zu verifizieren, dass das Erstellen neuer ZIPs verweigert wird.
+		// This test is more complex because afero memfs is not global by default.
+		// For this task, it's sufficient to verify that creating new ZIPs is denied.
 	})
 	cfgDisabled := vfsrw.Config{
 		"mem": &vfsrw.VFS{

@@ -10,6 +10,9 @@ import (
 	"github.com/je4/utils/v2/pkg/zLogger"
 )
 
+// NewZipFSCloser creates a new zipFSCloser which wraps a zip filesystem
+// and the underlying zip file. It ensures the zip file is closed when the
+// filesystem's reference count reaches zero and Close is called.
 func NewZipFSCloser(zipFile fs.File, filename string, logger zLogger.ZLogger) (fs.FS, error) {
 	readerAt, ok := zipFile.(io.ReaderAt)
 	if !ok {
@@ -54,6 +57,7 @@ func (zipFS *zipFSCloser) ReadDir(name string) ([]fs.DirEntry, error) {
 	return readDirFS.ReadDir(name)
 }
 
+// IsRefCountFS defines an interface for filesystems with reference counting.
 type IsRefCountFS interface {
 	fs.FS
 	IncRef()

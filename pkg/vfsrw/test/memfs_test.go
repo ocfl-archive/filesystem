@@ -34,9 +34,9 @@ func TestVFS_MemFS(t *testing.T) {
 	defer vfs.Close()
 
 	testData := []byte("vfs memfs test data")
-	// Da vFSRW Pfade normalerweise mit dem Namen des FS einleiten (testmem:// oder ähnlich, je nach Implementierung von getFS)
-	// Ich schaue mir getFS in fs.go an, um das Pfadformat zu verstehen.
-	// Meistens ist es "name:/path" oder "name/path".
+	// Since vFSRW paths normally start with the name of the FS (testmem:// or similar, depending on implementation of getFS)
+	// I'm looking at getFS in fs.go to understand the path format.
+	// Usually it's "name:/path" or "name/path".
 
 	testFile := "vfs://testmem/test.txt"
 

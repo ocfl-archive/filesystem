@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -156,8 +157,8 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	} else {
 		// webFS is read-only in this test, so we still use the pre-generated data for the server
 		zipData := createTestZip()
-		// (Der httptest.Server in TestZipAsFolder_WebFS verwendet zipData)
-		// Wir lassen das hier so, da webFS im Test ein Mock-Server ist.
+		// (The httptest.Server in TestZipAsFolder_WebFS uses zipData)
+		// We leave this as it is because webFS is a mock server in the test.
 		_ = zipData
 	}
 
@@ -1104,4 +1105,168 @@ func TestZipAsFolder_Concurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestZipAsFolder_UnclosedFiles(t *testing.T) {
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	// OS setup for temporary directory
+	osTempDir := setupOSTempDir(t)
+	defer os.RemoveAll(osTempDir)
+
+	// Create two different zip files
+	zipData1 := createCustomTestZip("file1.txt", "content of file 1")
+	zipData2 := createCustomTestZip("file2.txt", "content of file 2")
+
+	os.WriteFile(filepath.Join(osTempDir, "test1.zip"), zipData1, 0644)
+	os.WriteFile(filepath.Join(osTempDir, "test2.zip"), zipData2, 0644)
+
+	// Configuration with CacheSize: 1
+	cfg := vfsrw.Config{
+		"os": &vfsrw.VFS{
+			Name: "os",
+			Type: "os",
+			ZipAsFolder: &vfsrw.ZipAsFolder{
+				Enabled:   true,
+				CacheSize: 1, // Only one zip file in cache at a time
+			},
+			OS: &vfsrw.OS{BaseDir: osTempDir},
+		},
+	}
+
+	vfs, err := vfsrw.NewFS(cfg, _logger)
+	if err != nil {
+		t.Fatalf("failed to create vfs: %v", err)
+	}
+	defer vfs.Close()
+
+	// 1. Open a file from the first zip file
+	f1, err := vfs.Open("vfs://os/test1.zip/file1.txt")
+	if err != nil {
+		t.Fatalf("failed to open file1.txt in test1.zip: %v", err)
+	}
+	// We intentionally do NOT close f1 here yet.
+
+	// 2. Access the second zip file.
+	// Since CacheSize=1, test1.zip will be evicted from the otter cache.
+	data2, err := vfs.ReadFile("vfs://os/test2.zip/file2.txt")
+	if err != nil {
+		t.Fatalf("failed to read file2.txt in test2.zip: %v", err)
+	}
+	if string(data2) != "content of file 2" {
+		t.Errorf("expected 'content of file 2', got '%s'", string(data2))
+	}
+
+	// 3. Verify that f1 (from the evicted zip file) is still readable.
+	// If the zip file had been closed immediately upon eviction, this would now fail.
+	buf := new(bytes.Buffer)
+	if _, err := io.Copy(buf, f1); err != nil {
+		t.Errorf("failed to read from f1 after test1.zip was evicted from cache: %v", err)
+	}
+	if buf.String() != "content of file 1" {
+		t.Errorf("expected 'content of file 1', got '%s'", buf.String())
+	}
+
+	// 4. Now close f1
+	if err := f1.Close(); err != nil {
+		t.Errorf("failed to close f1: %v", err)
+	}
+
+	t.Log("Successfully verified that unclosed files keep the Zip-FS alive after cache eviction.")
+}
+
+func TestZipAsFolder_Timeout(t *testing.T) {
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	osTempDir := setupOSTempDir(t)
+	defer os.RemoveAll(osTempDir)
+
+	zipData := createCustomTestZip("file.txt", "content")
+	os.WriteFile(filepath.Join(osTempDir, "test.zip"), zipData, 0644)
+
+	// Short timeout for the test
+	timeout := 500 * time.Millisecond
+	cfg := vfsrw.Config{
+		"os": &vfsrw.VFS{
+			Name: "os",
+			Type: "os",
+			ZipAsFolder: &vfsrw.ZipAsFolder{
+				Enabled:   true,
+				CacheSize: 10,
+				Timeout:   config.Duration(timeout),
+			},
+			OS: &vfsrw.OS{BaseDir: osTempDir},
+		},
+	}
+
+	vfs, err := vfsrw.NewFS(cfg, _logger)
+	if err != nil {
+		t.Fatalf("failed to create vfs: %v", err)
+	}
+	defer vfs.Close()
+
+	// 1. Access zip file to load it into the cache
+	_, err = vfs.ReadFile("vfs://os/test.zip/file.txt")
+	if err != nil {
+		t.Fatalf("failed to read file.txt in test.zip: %v", err)
+	}
+
+	// 2. Wait longer than the timeout + some buffer for the ClearUnlocked loop
+	time.Sleep(timeout * 3)
+
+	// 3. Access again. If the timeout worked, the zip file was unloaded
+	// Since we have no direct access to the internal state, we check the logs
+	// or trust that the code path was executed.
+	// Since we cannot directly check ClearUnlocked (internal), this test is more of a "sanity check".
+	// To really prove it, we would need to use an interface or a mock logger.
+
+	_, err = vfs.ReadFile("vfs://os/test.zip/file.txt")
+	if err != nil {
+		t.Fatalf("failed to read file.txt after timeout: %v", err)
+	}
+}
+
+func TestZipAsFolder_Finalizer(t *testing.T) {
+	var _logger zLogger.ZLogger = new(zerolog.New(zerolog.NewConsoleWriter()))
+
+	osTempDir := setupOSTempDir(t)
+	defer os.RemoveAll(osTempDir)
+
+	zipData := createCustomTestZip("file.txt", "content")
+	os.WriteFile(filepath.Join(osTempDir, "test.zip"), zipData, 0644)
+
+	cfg := vfsrw.Config{
+		"os": &vfsrw.VFS{
+			Name: "os",
+			Type: "os",
+			ZipAsFolder: &vfsrw.ZipAsFolder{
+				Enabled:   true,
+				CacheSize: 10,
+			},
+			OS: &vfsrw.OS{BaseDir: osTempDir},
+		},
+	}
+
+	// We create the VFS in an anonymous function so it can be released for GC afterwards
+	createAndUseVFS := func() {
+		vfs, err := vfsrw.NewFS(cfg, _logger)
+		if err != nil {
+			t.Errorf("failed to create vfs: %v", err)
+			return
+		}
+		// Access to load ZipFS
+		_, _ = vfs.ReadFile("vfs://os/test.zip/file.txt")
+		// vfs becomes unreachable here at the end of the function
+	}
+
+	createAndUseVFS()
+
+	// Trigger GC several times to execute finalizer/cleanup
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// This test primarily verifies that the finalizer code doesn't panic or lead to deadlocks.
+	// Real proof that the channel was closed is difficult without internal hooks.
 }

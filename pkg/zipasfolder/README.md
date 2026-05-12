@@ -22,7 +22,7 @@ import (
 )
 
 // Wrap an existing filesystem
-fsys, err := zipasfolder.NewFS(baseFS, 10, false, logger)
+fsys, err := zipasfolder.NewFS(baseFS, 10, time.Minute, false, logger)
 if err != nil {
 	// handle error
 }

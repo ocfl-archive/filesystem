@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +35,10 @@ func (fc *fileCloser) Close() error {
 
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only
 // it implements readwritefs.ReadWriteFS, fs.ReadDirFS, fs.ReadFileFS, basefs.CloserFS
-func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
+func NewFS(baseFS fs.FS, cacheSize int, timeout time.Duration, readOnly bool, logger zLogger.ZLogger) (*zipAsFolderFS, error) {
+	if timeout <= 0 {
+		timeout = time.Minute
+	}
 	logger = new(logger.With().Str("class", "zipAsFolderFS").Logger())
 	f := &zipAsFolderFS{
 		baseFS:   baseFS,
@@ -46,14 +50,19 @@ func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (
 	zipCache, err := otter.New[string, fs.FS](&otter.Options[string, fs.FS]{
 		MaximumSize: cacheSize,
 		OnAtomicDeletion: func(e otter.DeletionEvent[string, fs.FS]) {
+			// This function is called when an item is removed from the cache (evicted or invalidated).
 			zipFS := e.Value
 
 			f.lock.Lock()
+			// We cannot close the zipFS immediately if it's still in use (RefCount > 0)
+			// or if it's currently being modified/locked.
 			rc := getRefCount(zipFS)
 			if isLocked(zipFS) || rc > 0 {
+				// If still in use, we move it to a 'toClose' list to be closed later by ClearUnlocked.
 				f.toClose = append(f.toClose, zipFS)
 				f.lock.Unlock()
 			} else {
+				// If not in use, we can close it immediately.
 				f.lock.Unlock()
 				writefs.Close(zipFS)
 			}
@@ -64,8 +73,10 @@ func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (
 	}
 	f.zipCache = zipCache
 	go func() {
+		// This goroutine periodically checks for zip files that are no longer in use
+		// and can be safely closed. This includes files in the 'toClose' list.
 		for alive := true; alive; {
-			timer := time.NewTimer(time.Minute)
+			timer := time.NewTimer(timeout)
 			select {
 			case <-f.end:
 				timer.Stop()
@@ -75,6 +86,14 @@ func NewFS(baseFS fs.FS, cacheSize int, readOnly bool, logger zLogger.ZLogger) (
 			}
 		}
 	}()
+	// runtime.AddCleanup ensures that the background goroutine is stopped
+	// when the zipAsFolderFS object is garbage collected.
+	runtime.AddCleanup(f, func(end chan bool) {
+		select {
+		case end <- true:
+		default:
+		}
+	}, f.end)
 	return f, nil
 }
 
@@ -140,10 +159,13 @@ func (fsys *zipAsFolderFS) MkDir(path string) error {
 	return writefs.MkDir(fsys.baseFS, path)
 }
 
+// getZipFS retrieves a zip filesystem from the cache or loads it if not present.
+// It increases the reference count of the returned filesystem.
 func (fsys *zipAsFolderFS) getZipFS(zipFile string) (fs.FS, error) {
 	fsys.lock.Lock()
 	defer fsys.lock.Unlock()
 
+	// Check if already in cache and not closed
 	if zipFS, ok := fsys.zipCache.GetIfPresent(zipFile); ok {
 		if !isClosed(zipFS) {
 			incRef(zipFS)
@@ -151,20 +173,22 @@ func (fsys *zipAsFolderFS) getZipFS(zipFile string) (fs.FS, error) {
 		}
 	}
 
+	// Load zip file from base filesystem
 	fsys.logger.Debug().Msgf("load zip file '%s'", zipFile)
 	f, err := fsys.baseFS.Open(zipFile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot open zip file '%s'", zipFile)
 	}
+	// Create a new zip filesystem wrapper that supports reference counting and closing
 	zipFS, err := NewZipFSCloser(f, zipFile, fsys.logger)
 	if err != nil {
 		fsys.logger.Debug().Msgf("load zip file '%s' FAILED: %v", zipFile, err)
 		return nil, errors.Wrapf(err, "cannot create zipfscloser for '%s'", zipFile)
 	}
+	// Initial reference count for the current caller
 	incRef(zipFS)
+	// Add to cache. If an old entry is evicted, OnAtomicDeletion will be triggered.
 	fsys.zipCache.Set(zipFile, zipFS)
-	// Ensure otter processes the addition if possible,
-	// though Set is usually enough to make it visible to GetIfPresent
 	return zipFS, nil
 }
 
@@ -323,19 +347,29 @@ func (fsys *zipAsFolderFS) Close() error {
 	return nil
 }
 
+// ClearUnlocked iterates through the cache and the 'toClose' list to close
+// zip files that are no longer referenced and not locked.
 func (fsys *zipAsFolderFS) ClearUnlocked() error {
+	// 1. Check all items currently in the cache.
+	// If they are not locked and have no active references, we can remove them.
 	for key, value := range fsys.zipCache.All() {
 		if !isLocked(value) && getRefCount(value) == 0 {
-			fsys.zipCache.Invalidate(key)
+			fsys.zipCache.Invalidate(key) // This triggers OnAtomicDeletion
 		}
 	}
+
 	fsys.lock.Lock()
 	defer fsys.lock.Unlock()
+
+	// 2. Check the 'toClose' list.
+	// This list contains zip files that were evicted from the cache but were still in use.
 	var newToClose []fs.FS
 	for _, zipFS := range fsys.toClose {
 		if !isLocked(zipFS) && getRefCount(zipFS) == 0 {
+			// Now safe to close
 			writefs.Close(zipFS)
 		} else {
+			// Still in use or locked, keep in list for next cycle
 			newToClose = append(newToClose, zipFS)
 		}
 	}

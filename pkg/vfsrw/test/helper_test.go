@@ -107,8 +107,8 @@ func TestMatchPath(t *testing.T) {
 				t.Skip("Skipping Windows-specific test on non-Windows platform")
 			}
 			if !tt.windows && isWindows && tt.name != "vfs standard" && tt.name != "vfs short" && tt.name != "vfs with slash" {
-				// "vfs standard" etc. sind plattformunabhängig, aber ich habe sie nicht explizit markiert.
-				// Wir skippen nur die Linux-spezifischen auf Windows.
+				// "vfs standard" etc. are platform independent, but I haven't explicitly marked them.
+				// We only skip Linux-specific ones on Windows.
 				if strings.Contains(tt.name, "linux") {
 					t.Skip("Skipping Linux-specific test on Windows")
 				}

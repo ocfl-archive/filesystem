@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v4/pkg/writefs"
@@ -105,7 +106,7 @@ func (vfs *vFSRW) init(config Config) error {
 				}
 				toClose = append(toClose, closers...)
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -127,7 +128,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create webfs in '%s'", cfg.Name)
 				}
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -149,7 +150,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create osfs in '%s'", cfg.Name)
 				}
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -171,7 +172,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create sftpfsrw in '%s'", cfg.Name)
 				}
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -193,7 +194,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
 				}
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -215,7 +216,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create s3fsrw in '%s'", cfg.Name)
 				}
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -240,7 +241,7 @@ func (vfs *vFSRW) init(config Config) error {
 					return errors.Wrapf(err, "cannot create aferofs in '%s'", cfg.Name)
 				}
 				if cfg.ZipAsFolder != nil && cfg.ZipAsFolder.Enabled && cfg.ZipAsFolder.CacheSize > 0 {
-					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
+					zFS, err := zipasfolder.NewFS(xFS, int(cfg.ZipAsFolder.CacheSize), time.Duration(cfg.ZipAsFolder.Timeout), cfg.ReadOnly || cfg.ZipAsFolder.ReadOnly, logger)
 					if err != nil {
 						closeAll()
 						return errors.Wrapf(err, "cannot create zipasfolder over '%v'", xFS)
@@ -282,19 +283,21 @@ func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
 	if subFS, ok := fSys.(writefs.SubFS); ok {
 		return subFS.Sub(pathStr)
 	}
-	if strings.HasSuffix(dir, ".zip") {
-		conf, err := vfs.getConfig(dir)
-		if err != nil {
-			return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
-		}
-		if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
-			_, err := fs.Stat(vfs, dir)
+	/*
+		if strings.HasSuffix(dir, ".zip") {
+			conf, err := vfs.getConfig(dir)
 			if err != nil {
-				return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
+				return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
 			}
-			return zipfsw.NewFSFile(fSys, dir, false, vfs.logger)
+			if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
+				if _, err := fs.Stat(vfs, dir); err != nil {
+					return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
+				}
+				return zipfsw.NewFSFile(fSys, pathStr, false, vfs.logger)
+			}
 		}
-	}
+
+	*/
 	return writefs.NewSubFS(fSys, pathStr)
 }
 

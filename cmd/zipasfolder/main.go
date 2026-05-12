@@ -37,7 +37,7 @@ func NewFSAbstractionZipAsFolder(name, basePath, fsBase string, cacheSize int, l
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create osfs")
 	}
-	fsa.FS, err = zipasfolder.NewFS(osfs, cacheSize, false, logger)
+	fsa.FS, err = zipasfolder.NewFS(osfs, cacheSize, 0, false, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create zipasfolder")
 	}
@@ -107,7 +107,7 @@ func main0() {
 	logger := new(zerolog.New(os.Stdout).With().Timestamp().Logger())
 
 	dirFS, _ := osfsrw.NewFS(*basedir, false, logger)
-	newFS, err := zipasfolder.NewFS(dirFS, 20, false, logger)
+	newFS, err := zipasfolder.NewFS(dirFS, 20, 0, false, logger)
 	if err != nil {
 		panic(err)
 	}
