@@ -63,7 +63,7 @@ type RealPathFS interface {
 }
 
 type IsEmptyFS interface {
-	IsEmpty(dir string) (bool, bool)
+	IsEmpty(dir string) (bool, error)
 }
 
 type FullFS interface {

@@ -51,13 +51,12 @@ type osFSRW struct {
 	readOnly bool
 }
 
-func (d *osFSRW) IsEmpty(dir string) (bool, bool) {
+func (d *osFSRW) IsEmpty(dir string) (bool, error) {
 	entries, err := d.ReadDir(dir)
 	if err != nil {
-		d.logger.Error().Err(err).Msgf("cannot read directory '%s'", dir)
-		return false, false
+		return false, errors.WithStack(err)
 	}
-	return len(entries) == 0, true
+	return len(entries) == 0, nil
 }
 
 func (d *osFSRW) SubCreate(dir string) (fs.FS, error) {

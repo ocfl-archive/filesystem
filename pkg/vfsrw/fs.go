@@ -267,11 +267,10 @@ type vFSRW struct {
 	logger                   zLogger.ZLogger
 }
 
-func (vfs *vFSRW) IsEmpty(dir string) (bool, bool) {
+func (vfs *vFSRW) IsEmpty(dir string) (bool, error) {
 	vFS, pathStr, err := vfs.getFS(dir)
 	if err != nil {
-		vfs.logger.Error().Err(err).Msgf("cannot get FS for path '%s'", dir)
-		return false, false
+		return false, errors.WithStack(err)
 	}
 	return writefs.IsEmpty(vFS, pathStr)
 }

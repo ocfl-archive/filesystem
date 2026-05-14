@@ -229,9 +229,9 @@ func IsWriteable(fsys fs.FS, path string) bool {
 	return false
 }
 
-func IsEmpty(fsys fs.FS, dir string) (bool, bool) {
+func IsEmpty(fsys fs.FS, dir string) (bool, error) {
 	if _fsys, ok := fsys.(IsEmptyFS); ok {
 		return _fsys.IsEmpty(dir)
 	}
-	return false, false
+	return false, ErrNotImplemented
 }

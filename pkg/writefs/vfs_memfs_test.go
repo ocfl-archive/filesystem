@@ -18,8 +18,8 @@ func TestVFS_MemFS(t *testing.T) {
 	cfg := vfsrw.Config{
 		"testmem": &vfsrw.VFS{
 			Name:  "testmem",
-			Type:  "memfs",
-			MemFS: &vfsrw.MemFS{},
+			Type:  "afero",
+			Afero: &vfsrw.Afero{BaseDir: "mem://"},
 		},
 	}
 

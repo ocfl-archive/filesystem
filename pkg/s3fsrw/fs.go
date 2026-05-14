@@ -87,13 +87,12 @@ type s3FSRW struct {
 	readOnly bool
 }
 
-func (s3FS *s3FSRW) IsEmpty(dir string) (bool, bool) {
+func (s3FS *s3FSRW) IsEmpty(dir string) (bool, error) {
 	entries, err := s3FS.ReadDir(dir)
 	if err != nil {
-		s3FS.logger.Errorf("failed to read directory %s: %v", dir, err)
-		return false, false
+		return false, errors.WithStack(err)
 	}
-	return len(entries) == 0, true
+	return len(entries) == 0, nil
 }
 
 func (s3FS *s3FSRW) SubCreate(dir string) (fs.FS, error) {
