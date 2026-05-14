@@ -281,7 +281,7 @@ func (vfs *vFSRW) RealPath(path string) string {
 		vfs.logger.Error().Err(err).Msgf("cannot match path '%s'", path)
 		return path
 	}
-	return fmt.Sprintf("vfs://%s/%s", name, newPath)
+	return fmt.Sprintf("vfs:/%s/%s", name, newPath)
 }
 
 func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
@@ -320,6 +320,11 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	zipAsFolder := conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled && strings.HasSuffix(dir, ".zip")
 
 	if !zipAsFolder {
+		if err := writefs.MkDir(vfs, dir); err != nil {
+			if !errors.Is(err, writefs.ErrNotImplemented) {
+				return nil, errors.WithStack(err)
+			}
+		}
 		return writefs.NewSubFS(vfs, dir)
 	}
 	fi, err := fs.Stat(vfs, dir)
