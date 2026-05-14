@@ -34,6 +34,7 @@ type VFSRW interface {
 	writefs.SubFS
 	writefs.SubCreateFS
 	writefs.RealPathFS
+	writefs.IsEmptyFS
 	fs.FS
 	fs.ReadDirFS
 	fs.ReadFileFS
@@ -264,6 +265,15 @@ type vFSRW struct {
 	miniResolverClientTLS    *tls.Config
 	miniResolverClientLoader loader.Loader
 	logger                   zLogger.ZLogger
+}
+
+func (vfs *vFSRW) IsEmpty(dir string) (bool, bool) {
+	vFS, pathStr, err := vfs.getFS(dir)
+	if err != nil {
+		vfs.logger.Error().Err(err).Msgf("cannot get FS for path '%s'", dir)
+		return false, false
+	}
+	return writefs.IsEmpty(vFS, pathStr)
 }
 
 func (vfs *vFSRW) RealPath(path string) string {

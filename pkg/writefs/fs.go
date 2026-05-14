@@ -62,6 +62,10 @@ type RealPathFS interface {
 	RealPath(path string) string
 }
 
+type IsEmptyFS interface {
+	IsEmpty(dir string) (bool, bool)
+}
+
 type FullFS interface {
 	CopyFS
 	CreateFS
@@ -76,6 +80,7 @@ type FullFS interface {
 	SubFS
 	SubCreateFS
 	RealPathFS
+	IsEmptyFS
 	fs.FS
 	fs.ReadDirFS
 	fs.ReadFileFS

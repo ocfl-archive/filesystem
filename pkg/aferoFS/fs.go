@@ -16,6 +16,15 @@ type aferoFSRW struct {
 	logger zLogger.ZLogger
 }
 
+func (m *aferoFSRW) IsEmpty(dir string) (bool, bool) {
+	entries, err := m.ReadDir(dir)
+	if err != nil {
+		m.logger.Error().Err(err).Msgf("cannot read directory '%s'", dir)
+		return false, false
+	}
+	return len(entries) == 0, true
+}
+
 func (m *aferoFSRW) SubCreate(dir string) (fs.FS, error) {
 	if err := m.MkDir(dir); err != nil {
 		return nil, errors.Wrapf(err, "cannot create subdirectory '%s'", dir)

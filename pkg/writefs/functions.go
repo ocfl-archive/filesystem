@@ -228,3 +228,10 @@ func IsWriteable(fsys fs.FS, path string) bool {
 	}
 	return false
 }
+
+func IsEmpty(fsys fs.FS, dir string) (bool, bool) {
+	if _fsys, ok := fsys.(IsEmptyFS); ok {
+		return _fsys.IsEmpty(dir)
+	}
+	return false, false
+}

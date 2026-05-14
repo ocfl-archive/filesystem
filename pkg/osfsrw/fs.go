@@ -51,6 +51,15 @@ type osFSRW struct {
 	readOnly bool
 }
 
+func (d *osFSRW) IsEmpty(dir string) (bool, bool) {
+	entries, err := d.ReadDir(dir)
+	if err != nil {
+		d.logger.Error().Err(err).Msgf("cannot read directory '%s'", dir)
+		return false, false
+	}
+	return len(entries) == 0, true
+}
+
 func (d *osFSRW) SubCreate(dir string) (fs.FS, error) {
 	if err := os.MkdirAll(filepath.Join(d.dir, dir), 0755); err != nil {
 		return nil, errors.Wrapf(err, "cannot create directory '%s'", dir)

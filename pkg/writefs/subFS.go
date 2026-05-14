@@ -21,6 +21,13 @@ type subFS struct {
 	dir  string
 }
 
+func (sfs *subFS) IsEmpty(dir string) (bool, bool) {
+	if isEmptyFS, ok := sfs.fsys.(IsEmptyFS); ok {
+		return isEmptyFS.IsEmpty(path.Join(sfs.dir, dir))
+	}
+	return false, false
+}
+
 func (sfs *subFS) SubCreate(dir string) (fs.FS, error) {
 	if subCreateFS, ok := sfs.fsys.(SubCreateFS); ok {
 		return subCreateFS.SubCreate(path.Join(sfs.dir, dir))
