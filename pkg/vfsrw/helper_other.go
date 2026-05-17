@@ -11,7 +11,7 @@ import (
 	"github.com/ocfl-archive/filesystem/pkg/osfsrw"
 )
 
-func AddLocal(fSys fs.FS) error {
+func AddLocal(fSys fs.FS, zConfig *ZipAsFolder) error {
 	vfs, ok := fSys.(*vFSRW)
 	if !ok {
 		return errors.Errorf("fSys is not a *vFSRW, but %T", fSys)
@@ -21,7 +21,7 @@ func AddLocal(fSys fs.FS) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot create osfsrw for /")
 	}
-	vfs.AddFS("root", osFS)
+	vfs.AddFS("root", zConfig, osFS)
 	vfs.logger.Info().Msg("added local / to vfs as root")
 	return nil
 }
