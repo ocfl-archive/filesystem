@@ -12,8 +12,8 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 )
 
 // todo: add jwt bearer token

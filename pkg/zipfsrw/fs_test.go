@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/je4/filesystem/v4/pkg/osfsrw"
-	"github.com/je4/filesystem/v4/pkg/writefs"
-	"github.com/je4/filesystem/v4/pkg/zipfs"
 	"github.com/je4/utils/v2/pkg/checksum"
+	"github.com/ocfl-archive/filesystem/pkg/osfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/zipfs"
 	"github.com/rs/zerolog"
 )
 

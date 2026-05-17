@@ -3,8 +3,8 @@ package vfsrw_test
 import (
 	"testing"
 
-	"github.com/je4/filesystem/v4/pkg/vfsrw"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
 	"github.com/rs/zerolog"
 )
 

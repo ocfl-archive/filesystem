@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/writefs"
-	"github.com/je4/filesystem/v4/pkg/zipasfolder"
-	"github.com/je4/filesystem/v4/pkg/zipfsw"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/zipasfolder"
+	"github.com/ocfl-archive/filesystem/pkg/zipfsw"
 	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
 )

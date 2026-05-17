@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/osfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/osfsrw"
 )
 
 func AddLocal(fSys fs.FS) error {

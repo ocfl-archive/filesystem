@@ -7,8 +7,8 @@ import (
 	"io/fs"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 )
 
 // NewZipFSRW creates a new ReadWriteFS

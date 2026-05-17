@@ -5,8 +5,8 @@ import (
 	"io"
 	"io/fs"
 
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 )
 
 func NewCreateFSFunc(tlsConfig *tls.Config, addr string, vfs string, closer []io.Closer, jwtKey string, logger zLogger.ZLogger) writefs.CreateFSFunc {

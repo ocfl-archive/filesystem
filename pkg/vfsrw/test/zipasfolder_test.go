@@ -17,13 +17,13 @@ import (
 	"time"
 
 	sftp_test_server "github.com/JuniorGuerra/sftp_test_server"
-	"github.com/je4/filesystem/v4/pkg/vfsrw"
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/config"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 	"github.com/rs/zerolog"
 )
 

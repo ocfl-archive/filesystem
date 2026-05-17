@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/je4/filesystem/v4/pkg/osfsrw"
-	"github.com/je4/filesystem/v4/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/osfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 	"github.com/rs/zerolog"
 )
 

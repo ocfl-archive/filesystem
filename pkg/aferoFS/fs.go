@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 	"github.com/spf13/afero"
 )
 

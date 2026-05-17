@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 )
 
 func NewCreateFSFunc(noCompression bool, logger zLogger.ZLogger) writefs.CreateFSFunc {

@@ -1,4 +1,4 @@
-module github.com/je4/filesystem/v4
+module github.com/ocfl-archive/filesystem
 
 go 1.26
 

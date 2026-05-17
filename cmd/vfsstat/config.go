@@ -6,7 +6,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/BurntSushi/toml"
-	"github.com/je4/filesystem/v4/pkg/vfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
 )
 
 type VFSStatConfig struct {

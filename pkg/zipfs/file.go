@@ -5,7 +5,7 @@ import (
 	"io/fs"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 )
 
 func NewFile[E io.Reader](info fs.FileInfo, rc E, mutex *writefs.Mutex, closeFunc func()) fs.File {

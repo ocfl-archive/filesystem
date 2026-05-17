@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/osfsrw"
-	"github.com/je4/filesystem/v4/pkg/writefs"
-	"github.com/je4/filesystem/v4/pkg/zipasfolder"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/osfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/zipasfolder"
 	"github.com/rs/zerolog"
 )
 

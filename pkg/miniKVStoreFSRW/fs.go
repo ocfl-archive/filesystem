@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	"github.com/je4/filesystem/v4/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
 	genericproto "go.ub.unibas.ch/cloud/genericproto/v2/pkg/generic/proto"
 	"go.ub.unibas.ch/cloud/minikvstore/pkg/minikvstoreproto"
 	resolver "go.ub.unibas.ch/cloud/miniresolverclient/pkg/miniresolverclient"
