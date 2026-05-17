@@ -21,7 +21,12 @@ func AddLocal(fSys fs.FS, zConfig *ZipAsFolder) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot create osfsrw for /")
 	}
-	vfs.AddFS("root", zConfig, osFS)
+	vfs.AddFS("root", &VFS{
+		Name:        "root",
+		Type:        "os",
+		ReadOnly:    false,
+		ZipAsFolder: zConfig,
+	}, osFS)
 	vfs.logger.Info().Msg("added local / to vfs as root")
 	return nil
 }
