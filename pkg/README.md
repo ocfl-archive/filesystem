@@ -18,6 +18,7 @@ These packages provide actual storage backend implementations:
 - [**miniKVStoreFSRW**](./miniKVStoreFSRW/README.md): MiniKVStore-backed storage.
 - [**webFS**](./webFS/README.md): Web/HTTP-based filesystem.
 - [**zipfsrw**](./zipfsrw/README.md): Read/Write support for ZIP files.
+- [**zipfsw**](./zipfsw/README.md): Write-only support for ZIP files (sequential creation).
 
 ## Filesystem Wrappers
 
