@@ -299,6 +299,26 @@ func (fsys *zipAsFolderFS) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 // Open opens a file from the filesystem
+func (fsys *zipAsFolderFS) Sub(name string) (fs.FS, error) {
+	fsys.logger.Debug().Msgf("Open('%s')", name)
+	name = clearPath(name)
+	zipFile, zipPath, isZIP := expandZipFile(name)
+	fsys.logger.Debug().Msgf("expandZipFile('%s') -> zipFile='%s', zipPath='%s', isZIP=%v", name, zipFile, zipPath, isZIP)
+	if !isZIP {
+		return writefs.NewSubFS(fsys, name)
+	}
+
+	zipFS, err := fsys.getZipFS(zipFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
+	}
+	if zipPath == "" {
+		return zipFS, nil
+	}
+	return fs.Sub(zipFS, zipPath)
+}
+
+// Open opens a file from the filesystem
 func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 	fsys.logger.Debug().Msgf("Open('%s')", name)
 	name = clearPath(name)
