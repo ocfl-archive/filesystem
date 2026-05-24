@@ -66,11 +66,11 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	}
 	var zipPath string
 	if fsName == "s3" {
-		zipPath = fmt.Sprintf("vfs://%s/testbucket/test.zip", fsName)
+		zipPath = fmt.Sprintf("vfs:/%s/testbucket/test.zip", fsName)
 	} else if fsName == "web" {
-		zipPath = fmt.Sprintf("vfs://%s/test.zip", fsName)
+		zipPath = fmt.Sprintf("vfs:/%s/test.zip", fsName)
 	} else {
-		zipPath = fmt.Sprintf("vfs://%s/test.zip", fsName)
+		zipPath = fmt.Sprintf("vfs:/%s/test.zip", fsName)
 	}
 
 	if fsName != "web" {
@@ -189,7 +189,7 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	}
 	foundSub := false
 	for _, e := range entries {
-		if e.Name() == "sub" {
+		if e.Name() == zipPath+"/sub" {
 			foundSub = true
 			if !e.IsDir() {
 				t.Errorf("expected 'sub' to be a directory")
@@ -492,9 +492,9 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			}
 			var basePath string
 			if be == "s3" {
-				basePath = "vfs://s3/testbucket/"
+				basePath = "vfs:/s3/testbucket/"
 			} else {
-				basePath = fmt.Sprintf("vfs://%s/", be)
+				basePath = fmt.Sprintf("vfs:/%s/", be)
 			}
 			zipPath := basePath + "test.zip"
 
@@ -592,7 +592,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 				foundZip := false
 				for _, e := range res {
 					t.Logf("[%s] Entry in root: %s (IsDir: %v)", be, e.Name(), e.IsDir())
-					if e.Name() == "test.zip" {
+					if e.Name() == basePath+"/test.zip" {
 						foundZip = true
 						if !e.IsDir() {
 							t.Errorf("[%s] expected test.zip to be a directory in root listing", be)
@@ -611,7 +611,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			}
 			foundSub := false
 			for _, e := range entries {
-				if e.Name() == "sub" {
+				if e.Name() == zipPath+"/sub" {
 					foundSub = true
 					if !e.IsDir() {
 						t.Errorf("[%s] expected sub to be a directory", be)
@@ -629,7 +629,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			}
 			foundDeep := false
 			for _, e := range entries {
-				if e.Name() == "deep" {
+				if e.Name() == zipPath+"/sub/deep" {
 					foundDeep = true
 					if !e.IsDir() {
 						t.Errorf("[%s] expected deep to be a directory", be)

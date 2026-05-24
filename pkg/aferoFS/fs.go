@@ -3,6 +3,7 @@ package aferoFS
 import (
 	"io"
 	"io/fs"
+	"path"
 	"path/filepath"
 
 	"emperror.dev/errors"
@@ -86,6 +87,17 @@ func (m *aferoFSRW) Stat(name string) (fs.FileInfo, error) {
 	return fi, nil
 }
 
+type subDirEntry struct {
+	fs.DirEntry
+	name string
+}
+
+func (s subDirEntry) Name() string {
+	return s.name
+}
+
+var _ fs.DirEntry = &subDirEntry{}
+
 func (m *aferoFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 	f, err := m.fs.Open(name)
 	if err != nil {
@@ -100,7 +112,8 @@ func (m *aferoFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 
 	var entries []fs.DirEntry
 	for _, info := range infos {
-		entries = append(entries, fs.FileInfoToDirEntry(info))
+		di := fs.FileInfoToDirEntry(info)
+		entries = append(entries, &subDirEntry{di, path.Join(name, filepath.ToSlash(info.Name()))})
 	}
 	return entries, nil
 }

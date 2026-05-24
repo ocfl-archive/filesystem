@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"emperror.dev/errors"
 )
@@ -12,7 +13,7 @@ import (
 func NewSubFS(fsys fs.FS, dir string) (fs.FS, error) {
 	return &subFS{
 		fsys: fsys,
-		dir:  dir,
+		dir:  strings.TrimSuffix(strings.Replace(dir, "vfs://", "vfs:/", 1), "/"),
 	}, nil
 }
 
