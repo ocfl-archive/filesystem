@@ -31,7 +31,7 @@ func AddLocal(fSys fs.FS, zConfig *ZipAsFolder) error {
 	return nil
 }
 
-func pathToVFSPath(pathStr string) (string, string, error) {
+func pathToVFSPath(pathStr string) (string, string, string, error) {
 	pathStr = filepath.ToSlash(filepath.Clean(pathStr))
 	var err error
 	if !filepath.IsAbs(pathStr) {
@@ -42,5 +42,5 @@ func pathToVFSPath(pathStr string) (string, string, error) {
 		pathStr = filepath.ToSlash(pathStr)
 	}
 	pathStr = strings.TrimPrefix(pathStr, "/")
-	return "root", pathStr, nil
+	return path.Join("vfs:/root", newPath), "root", pathStr, nil
 }

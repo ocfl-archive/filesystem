@@ -4,6 +4,7 @@ package vfsrw
 
 import (
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -51,13 +52,13 @@ func AddLocal(fSys fs.FS, zConfig *ZipAsFolder) error {
 	return nil
 }
 
-func pathToVFSPath(pathStr string) (string, string, error) {
+func pathToVFSPath(pathStr string) (string, string, string, error) {
 	pathStr = filepath.ToSlash(filepath.Clean(pathStr))
 	var err error
 	if !filepath.IsAbs(pathStr) {
 		pathStr, err = filepath.Abs(pathStr)
 		if err != nil {
-			return "", "", errors.Wrap(err, "cannot get absolute path")
+			return "", "", "", errors.Wrap(err, "cannot get absolute path")
 		}
 		pathStr = filepath.ToSlash(pathStr)
 	}
@@ -83,5 +84,5 @@ func pathToVFSPath(pathStr string) (string, string, error) {
 	*/
 	name := strings.ToLower(pathStr[0:1])
 	newPath := strings.TrimPrefix(pathStr[2:], "/")
-	return name, newPath, nil
+	return path.Join("vfs:/", name, newPath), name, newPath, nil
 }

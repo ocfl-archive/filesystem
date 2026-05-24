@@ -113,7 +113,7 @@ func TestMatchPath(t *testing.T) {
 					t.Skip("Skipping Linux-specific test on Windows")
 				}
 			}
-			gotName, gotPath, err := vfsrw.MatchPath(tt.input)
+			_, gotName, gotPath, err := vfsrw.MatchPath(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("matchPath() error = %v, wantErr %v", err, tt.wantErr)
 				return

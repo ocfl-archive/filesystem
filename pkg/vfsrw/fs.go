@@ -275,11 +275,11 @@ func (vfs *vFSRW) IsEmpty(dir string) (bool, error) {
 	return writefs.IsEmpty(vFS, pathStr)
 }
 
-func (vfs *vFSRW) RealPath(path string) string {
-	name, newPath, err := MatchPath(path)
+func (vfs *vFSRW) RealPath(pathStr string) string {
+	pathStr, name, newPath, err := MatchPath(pathStr)
 	if err != nil {
-		vfs.logger.Error().Err(err).Msgf("cannot match path '%s'", path)
-		return path
+		vfs.logger.Error().Err(err).Msgf("cannot match path '%s'", pathStr)
+		return pathStr
 	}
 	return fmt.Sprintf("vfs:/%s/%s", name, newPath)
 }
@@ -521,8 +521,8 @@ func (vfs *vFSRW) Remove(name string) error {
 }
 
 func (vfs *vFSRW) Rename(oldPath, newPath string) error {
-	name1, _, _ := MatchPath(oldPath)
-	name2, _, _ := MatchPath(newPath)
+	oldPath, name1, _, _ := MatchPath(oldPath)
+	newPath, name2, _, _ := MatchPath(newPath)
 	if name2 != name1 {
 		return errors.Errorf("cannot rename over multiple filesystems %s -> %s", name1, name2)
 	}
@@ -643,7 +643,7 @@ func (vfs *vFSRW) Open(vfsPath string) (fs.File, error) {
 }
 
 func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
-	name, pathStr, err := MatchPath(vfsPath)
+	vfsPath, name, pathStr, err := MatchPath(vfsPath)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
@@ -654,7 +654,7 @@ func (vfs *vFSRW) getFS(vfsPath string) (fs.FS, string, error) {
 	return vfsStruct.FS, pathStr, nil
 }
 func (vfs *vFSRW) getConfig(vfsPath string) (*VFS, error) {
-	name, _, err := MatchPath(vfsPath)
+	vfsPath, name, _, err := MatchPath(vfsPath)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -678,7 +678,7 @@ func (vfs *vFSRW) Join(fsys fs.FS, elems ...string) string {
 }
 
 func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
-	srcName, srcPath, err := MatchPath(src)
+	src, srcName, srcPath, err := MatchPath(src)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
@@ -687,7 +687,7 @@ func (vfs *vFSRW) Copy(src, dst string) (int64, error) {
 		return 0, errors.Errorf("vfs '%s' not configured for path '%s'", srcName, src)
 	}
 	srcFS := srcFSStruct.FS
-	dstName, dstPath, err := MatchPath(dst)
+	dst, dstName, dstPath, err := MatchPath(dst)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
