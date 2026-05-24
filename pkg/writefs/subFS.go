@@ -95,8 +95,30 @@ func (sfs *subFS) Open(name string) (fs.File, error) {
 	return sfs.fsys.Open(path.Join(sfs.dir, name))
 }
 
+type subDirEntry struct {
+	fs.DirEntry
+	name string
+}
+
+func (s subDirEntry) Name() string {
+	return s.name
+}
+
+var _ fs.DirEntry = &subDirEntry{}
+
 func (sfs *subFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return fs.ReadDir(sfs.fsys, path.Join(sfs.dir, name))
+	entries, err := fs.ReadDir(sfs.fsys, path.Join(sfs.dir, name))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read directory '%s' in subFS", name)
+	}
+	newEntries := []fs.DirEntry{}
+	for _, entry := range entries {
+		newEntries = append(newEntries, &subDirEntry{
+			DirEntry: entry,
+			name:     entry.Name()[len(sfs.dir)+1:], //strings.TrimPrefix(entry.Name(), sfs.dir+"/"),
+		})
+	}
+	return newEntries, nil
 }
 
 func (sfs *subFS) ReadFile(name string) ([]byte, error) {
