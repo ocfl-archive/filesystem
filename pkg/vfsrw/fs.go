@@ -625,7 +625,7 @@ func (vfs *vFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 	}
 	newEntries := []fs.DirEntry{}
 	for _, d := range de {
-		newEntries = append(newEntries, &subDirEntry{d, strings.Replace(name, "//", "/", 1) + "/" + d.Name()})
+		newEntries = append(newEntries, &subDirEntry{d, path.Join(strings.Replace(name, "//", "/", 1), d.Name())})
 	}
 	return newEntries, nil
 }

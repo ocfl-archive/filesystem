@@ -73,13 +73,13 @@ func TestVFS_MemFS(t *testing.T) {
 	fmt.Printf("File Name: %s, Size: %d\n", fi.Name(), fi.Size())
 
 	// ReadDir
-	entries, err := vfs.ReadDir("vfs://testmem/")
+	entries, err := vfs.ReadDir("vfs:/testmem/")
 	if err != nil {
 		t.Fatalf("failed to read dir: %v", err)
 	}
 	found := false
 	for _, entry := range entries {
-		if entry.Name() == "test.txt" {
+		if entry.Name() == "vfs:/testmem/test.txt" {
 			found = true
 			break
 		}

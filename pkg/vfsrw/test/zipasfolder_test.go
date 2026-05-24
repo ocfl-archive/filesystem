@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -492,11 +493,11 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			}
 			var basePath string
 			if be == "s3" {
-				basePath = "vfs:/s3/testbucket/"
+				basePath = "vfs:/s3/testbucket"
 			} else {
-				basePath = fmt.Sprintf("vfs:/%s/", be)
+				basePath = fmt.Sprintf("vfs:/%s", be)
 			}
-			zipPath := basePath + "test.zip"
+			zipPath := path.Join(basePath, "test.zip")
 
 			if writefs.IsWriteable(vfs, zipPath) {
 				subFS, err := vfs.SubCreate(zipPath)
@@ -592,7 +593,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 				foundZip := false
 				for _, e := range res {
 					t.Logf("[%s] Entry in root: %s (IsDir: %v)", be, e.Name(), e.IsDir())
-					if e.Name() == basePath+"/test.zip" {
+					if e.Name() == path.Join(basePath, "/test.zip") {
 						foundZip = true
 						if !e.IsDir() {
 							t.Errorf("[%s] expected test.zip to be a directory in root listing", be)
