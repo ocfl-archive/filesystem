@@ -603,17 +603,6 @@ func (vfs *vFSRW) ReadFile(name string) ([]byte, error) {
 	return data, nil
 }
 
-type subDirEntry struct {
-	fs.DirEntry
-	name string
-}
-
-func (s subDirEntry) Name() string {
-	return s.name
-}
-
-var _ fs.DirEntry = &subDirEntry{}
-
 func (vfs *vFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 	vFS, pathStr, err := vfs.getFS(name)
 	if err != nil {
@@ -623,11 +612,7 @@ func (vfs *vFSRW) ReadDir(name string) ([]fs.DirEntry, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	newEntries := []fs.DirEntry{}
-	for _, d := range de {
-		newEntries = append(newEntries, &subDirEntry{d, path.Join(strings.Replace(name, "//", "/", 1), d.Name())})
-	}
-	return newEntries, nil
+	return de, nil
 }
 
 func (vfs *vFSRW) Open(vfsPath string) (fs.File, error) {

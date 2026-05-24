@@ -79,7 +79,7 @@ func TestVFS_MemFS(t *testing.T) {
 	}
 	found := false
 	for _, entry := range entries {
-		if entry.Name() == "vfs:/testmem/test.txt" {
+		if entry.Name() == "test.txt" {
 			found = true
 			break
 		}

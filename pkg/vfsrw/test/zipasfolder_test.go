@@ -190,7 +190,7 @@ func runZipAsFolderTest(t *testing.T, vfs vfsrw.VFSRW, fsName string) {
 	}
 	foundSub := false
 	for _, e := range entries {
-		if e.Name() == zipPath+"/sub" {
+		if e.Name() == "sub" {
 			foundSub = true
 			if !e.IsDir() {
 				t.Errorf("expected 'sub' to be a directory")
@@ -593,7 +593,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 				foundZip := false
 				for _, e := range res {
 					t.Logf("[%s] Entry in root: %s (IsDir: %v)", be, e.Name(), e.IsDir())
-					if e.Name() == path.Join(basePath, "/test.zip") {
+					if e.Name() == "test.zip" {
 						foundZip = true
 						if !e.IsDir() {
 							t.Errorf("[%s] expected test.zip to be a directory in root listing", be)
@@ -612,7 +612,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			}
 			foundSub := false
 			for _, e := range entries {
-				if e.Name() == zipPath+"/sub" {
+				if e.Name() == "sub" {
 					foundSub = true
 					if !e.IsDir() {
 						t.Errorf("[%s] expected sub to be a directory", be)
@@ -630,7 +630,7 @@ func TestZipAsFolder_ReadDir(t *testing.T) {
 			}
 			foundDeep := false
 			for _, e := range entries {
-				if e.Name() == zipPath+"/sub/deep" {
+				if e.Name() == "deep" {
 					foundDeep = true
 					if !e.IsDir() {
 						t.Errorf("[%s] expected deep to be a directory", be)

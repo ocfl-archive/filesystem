@@ -61,7 +61,7 @@ func TestVFS_AferoFS(t *testing.T) {
 	assert.NoError(t, err)
 	found := false
 	for _, entry := range entries {
-		if entry.Name() == "vfs:/testafero/test.txt" {
+		if entry.Name() == "test.txt" {
 			found = true
 			break
 		}
