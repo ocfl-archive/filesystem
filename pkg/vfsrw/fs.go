@@ -285,27 +285,27 @@ func (vfs *vFSRW) RealPath(path string) string {
 }
 
 func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
-		fSys, pathStr, err := vfs.getFS(dir)
-		if err != nil {
-			return nil, errors.Wrapf(err, "cannot get FS for path '%s'", dir)
-		}
-			if subFS, ok := fSys.(writefs.SubFS); ok {
-				return subFS.Sub(pathStr)
+	fSys, pathStr, err := vfs.getFS(dir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get FS for path '%s'", dir)
+	}
+	if subFS, ok := fSys.(writefs.SubFS); ok {
+		return subFS.Sub(pathStr)
+	}
+	/*
+		if strings.HasSuffix(dir, ".zip") {
+			conf, err := vfs.getConfig(dir)
+			if err != nil {
+				return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
 			}
-/*
-				if strings.HasSuffix(dir, ".zip") {
-					conf, err := vfs.getConfig(dir)
-					if err != nil {
-						return nil, errors.Wrapf(err, "cannot get config for zip file '%s'", dir)
-					}
-					if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
-						if _, err := fs.Stat(vfs, dir); err != nil {
-							return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
-						}
-						return zipfsw.NewFSFile(fSys, pathStr, false, vfs.logger)
-					}
+			if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled {
+				if _, err := fs.Stat(vfs, dir); err != nil {
+					return nil, errors.Wrapf(err, "cannot stat zip file '%s'", pathStr)
 				}
- */
+				return zipfsw.NewFSFile(fSys, pathStr, false, vfs.logger)
+			}
+		}
+	*/
 
 	return writefs.NewSubFS(vfs, dir)
 }
@@ -340,7 +340,7 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, errors.WithStack(err)
 	}
-	if conf != nil && (conf.ReadOnly || (conf.ZipAsFolder != nil && conf.ZipAsFolder.ReadOnly)) {
+	if conf.ReadOnly || (conf.ZipAsFolder != nil && conf.ZipAsFolder.ReadOnly) {
 		return nil, errors.Wrapf(fs.ErrNotExist, "cannot create zip file '%s' in read-only filesystem", dir)
 	}
 	fp, err := writefs.Create(vfs, dir)
@@ -348,7 +348,7 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 		return nil, errors.Wrapf(err, "cannot create zip file '%s'", dir)
 	}
 	var encFP io.WriteCloser
-	if conf != nil && conf.ZipAsFolder.AES != nil && conf.ZipAsFolder.AES.Enable {
+	if conf.ZipAsFolder != nil && conf.ZipAsFolder.AES != nil && conf.ZipAsFolder.AES.Enable {
 		_ = fp.Close()
 		_ = encFP
 		return nil, errors.Errorf("cannot create encrypted zip file '%s' not implemented", dir)

@@ -34,7 +34,7 @@ func Sub(fsys FS, path string) (FS, io.Closer, error) {
 		return nil, nil, errors.Errorf("subfs %v/%s is not a FS", fsys, path)
 	}
 	var closer io.Closer
-	if c, ok := fsys.(io.Closer); ok {
+	if c, ok := newAppendFS.(io.Closer); ok {
 		closer = c
 	} else {
 		closer = nopCloser{}
