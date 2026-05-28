@@ -97,6 +97,9 @@ func (zfs *zipFS) Stat(name string) (fs.FileInfo, error) {
 
 func (zfs *zipFS) stat(name string) (fs.FileInfo, error) {
 	name = clearPath(name)
+	if name == "" {
+		return writefs.NewFileInfoDir("."), nil
+	}
 	for _, f := range zfs.File {
 		if strings.HasPrefix(f.Name, name) && len(f.Name) != len(name) && f.Name[len(name)] == '/' {
 			return writefs.NewFileInfoDir(name), nil
