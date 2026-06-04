@@ -4,6 +4,7 @@ package vfsrw
 
 import (
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -37,10 +38,10 @@ func pathToVFSPath(pathStr string) (string, string, string, error) {
 	if !filepath.IsAbs(pathStr) {
 		pathStr, err = filepath.Abs(pathStr)
 		if err != nil {
-			return "", "", errors.Wrap(err, "cannot get absolute path")
+			return "", "", "", errors.Wrap(err, "cannot get absolute path")
 		}
 		pathStr = filepath.ToSlash(pathStr)
 	}
 	pathStr = strings.TrimPrefix(pathStr, "/")
-	return path.Join("vfs:/root", newPath), "root", pathStr, nil
+	return path.Join("vfs:/root", pathStr), "root", pathStr, nil
 }
