@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -40,6 +41,7 @@ type VFSRW interface {
 	fs.ReadFileFS
 	fs.StatFS
 	AddFS(name string, vfsConfig *VFS, fsys fs.FS)
+	GetFSNames() []string
 }
 
 type vfsStruct struct {
@@ -265,6 +267,14 @@ type vFSRW struct {
 	miniResolverClientTLS    *tls.Config
 	miniResolverClientLoader loader.Loader
 	logger                   zLogger.ZLogger
+}
+
+func (vfs *vFSRW) GetFSNames() []string {
+	var names = make([]string, 0, len(vfs.fss))
+	for k := range maps.Keys(vfs.fss) {
+		names = append(names, k)
+	}
+	return names
 }
 
 func (vfs *vFSRW) IsEmpty(dir string) (bool, error) {
