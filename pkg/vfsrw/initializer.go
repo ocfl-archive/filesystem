@@ -75,6 +75,7 @@ func (vfs *vFSRW) newMiniKVStore(name string, store *MiniKVStore, readonly bool,
 			nil,
 			time.Duration(store.ResolverTimeout),
 			time.Duration(store.ResolverNotFoundTimeout),
+			resolver.DefaultServerConfig(), // todo: this is a default config, we should allow users to override it
 			logger)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "cannot create miniResolverClient for %s", name)
