@@ -66,6 +66,10 @@ type IsEmptyFS interface {
 	IsEmpty(dir string) (bool, error)
 }
 
+type IsLocalFS interface {
+	IsLocal() bool
+}
+
 type FullFS interface {
 	CopyFS
 	CreateFS

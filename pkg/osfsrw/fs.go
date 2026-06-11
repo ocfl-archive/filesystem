@@ -51,6 +51,10 @@ type osFSRW struct {
 	readOnly bool
 }
 
+func (d *osFSRW) IsLocal() bool {
+	return true
+}
+
 func (d *osFSRW) IsEmpty(dir string) (bool, error) {
 	entries, err := d.ReadDir(dir)
 	if err != nil {
@@ -67,8 +71,7 @@ func (d *osFSRW) SubCreate(dir string) (fs.FS, error) {
 }
 
 func (d *osFSRW) RealPath(path string) string {
-	//TODO implement me
-	panic("implement me")
+	return filepath.ToSlash(filepath.Clean(path))
 }
 
 func (d *osFSRW) Copy(src, dst string) (int64, error) {
@@ -210,9 +213,10 @@ func (d *osFSRW) IsWriteable(path string) bool {
 }
 
 var (
-	_ writefs.FullFS = &osFSRW{}
-	_ fs.ReadDirFS   = &osFSRW{}
-	_ fs.ReadFileFS  = &osFSRW{}
-	_ fs.StatFS      = &osFSRW{}
-	_ fs.SubFS       = &osFSRW{}
+	_ writefs.FullFS    = &osFSRW{}
+	_ writefs.IsLocalFS = &osFSRW{}
+	_ fs.ReadDirFS      = &osFSRW{}
+	_ fs.ReadFileFS     = &osFSRW{}
+	_ fs.StatFS         = &osFSRW{}
+	_ fs.SubFS          = &osFSRW{}
 )

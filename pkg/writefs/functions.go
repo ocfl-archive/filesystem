@@ -11,6 +11,13 @@ import (
 
 var ErrNotImplemented = errors.NewPlain("not implemented")
 
+func IsLocal(fsys fs.FS) bool {
+	if _fsys, ok := fsys.(IsLocalFS); ok {
+		return _fsys.IsLocal()
+	}
+	return false
+}
+
 func Equal(fsys1, fsys2 fs.FS) bool {
 	if _fsys1, ok := fsys1.(EqualFS); ok {
 		return _fsys1.Equal(fsys2)
