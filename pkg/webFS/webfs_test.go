@@ -76,3 +76,75 @@ func TestWebFS_SeekerReaderAt(t *testing.T) {
 		t.Fatalf("Read after Seek and ReadAt mismatch: %q vs %q", string(buf2), string(buf3))
 	}
 }
+
+func TestWebFS_BuildURL(t *testing.T) {
+	var _logger zLogger.ZLogger = new(zerolog.New(os.Stderr))
+	wfs, err := NewFS(
+		"https://example.com/files/%%PATH%%",
+		nil,
+		false,
+		_logger,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "standard path without question mark",
+			input:    "foo/bar/baz.txt",
+			expected: "https://example.com/files/foo/bar/baz.txt",
+		},
+		{
+			name:     "path with question mark / query string",
+			input:    "foo/bar.pdf?download=true",
+			expected: "https://example.com/files/foo/bar.pdf?download=true",
+		},
+		{
+			name:     "path with spaces and query string",
+			input:    "my folder/test file.txt?v=2",
+			expected: "https://example.com/files/my%20folder/test%20file.txt?v=2",
+		},
+		{
+			name:     "path with multiple query parameters",
+			input:    "path/to/resource?param1=value1&param2=value2",
+			expected: "https://example.com/files/path/to/resource?param1=value1&param2=value2",
+		},
+		{
+			name:     "encoded %3F in filename is preserved as %3F",
+			input:    "foo/file%3Fname.txt",
+			expected: "https://example.com/files/foo/file%3Fname.txt",
+		},
+		{
+			name:     "lowercase encoded %3f in filename is preserved as %3F",
+			input:    "foo/file%3fname.txt",
+			expected: "https://example.com/files/foo/file%3Fname.txt",
+		},
+		{
+			name:     "encoded %3F in filename with query string",
+			input:    "my%3Ffile.txt?param=1",
+			expected: "https://example.com/files/my%3Ffile.txt?param=1",
+		},
+		{
+			name:     "spaces, encoded %3F and query string combined",
+			input:    "my folder/test%3Ffile.txt?v=2",
+			expected: "https://example.com/files/my%20folder/test%3Ffile.txt?v=2",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := wfs.Fullpath(tc.input)
+			if err != nil {
+				t.Fatalf("Fullpath(%q) returned unexpected error: %v", tc.input, err)
+			}
+			if got != tc.expected {
+				t.Errorf("Fullpath(%q) = %q, expected %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
