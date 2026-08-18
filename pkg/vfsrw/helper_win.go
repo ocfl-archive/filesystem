@@ -4,6 +4,7 @@ package vfsrw
 
 import (
 	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -56,11 +57,19 @@ func pathToVFSPath(pathStr string) (string, string, string, error) {
 	pathStr = filepath.ToSlash(filepath.Clean(pathStr))
 	var err error
 	if !filepath.IsAbs(pathStr) {
+		if strings.HasPrefix(pathStr, "~/") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return "", "", "", errors.Wrap(err, "cannot get home directory")
+			}
+			pathStr = filepath.ToSlash(filepath.Join(homeDir, pathStr[2:]))
+		}
 		pathStr, err = filepath.Abs(pathStr)
 		if err != nil {
 			return "", "", "", errors.Wrap(err, "cannot get absolute path")
 		}
 		pathStr = filepath.ToSlash(pathStr)
+
 	}
 	/*
 		if !(len(pathStr) > 1 && pathStr[1] == ':') {

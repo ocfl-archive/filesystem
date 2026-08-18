@@ -286,12 +286,12 @@ func (vfs *vFSRW) IsEmpty(dir string) (bool, error) {
 }
 
 func (vfs *vFSRW) RealPath(pathStr string) string {
-	pathStr, name, newPath, err := MatchPath(pathStr)
+	pathStr, _, _, err := MatchPath(pathStr)
 	if err != nil {
 		vfs.logger.Error().Err(err).Msgf("cannot match path '%s'", pathStr)
 		return pathStr
 	}
-	return fmt.Sprintf("vfs:/%s/%s", name, newPath)
+	return pathStr
 }
 
 func (vfs *vFSRW) Sub(dir string) (fs.FS, error) {
