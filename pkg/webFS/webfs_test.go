@@ -134,6 +134,16 @@ func TestWebFS_BuildURL(t *testing.T) {
 			input:    "my folder/test%3Ffile.txt?v=2",
 			expected: "https://example.com/files/my%20folder/test%3Ffile.txt?v=2",
 		},
+		{
+			name:     "encoded %26 in filename is preserved as %26",
+			input:    "foo/file%26name.txt",
+			expected: "https://example.com/files/foo/file%26name.txt",
+		},
+		{
+			name:     "encoded %26 in query parameter value",
+			input:    "foo/resource?param1=val1&param2=val%262",
+			expected: "https://example.com/files/foo/resource?param1=val1&param2=val%262",
+		},
 	}
 
 	for _, tc := range tests {

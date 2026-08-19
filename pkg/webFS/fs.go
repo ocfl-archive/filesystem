@@ -62,13 +62,18 @@ func (d *webFSRW) Equal(fsys fs.FS) bool {
 	return false
 }
 
-const qmPlaceholder = "__WEBFS_QM_PLACEHOLDER__"
+const (
+	qmPlaceholder  = "__WEBFS_QM_PLACEHOLDER__"
+	ampPlaceholder = "__WEBFS_AMP_PLACEHOLDER__"
+)
 
 func (d *webFSRW) buildURL(name string) string {
 	parts := strings.Split(path.Clean(filepath.ToSlash(name)), "/")
 	name = d.basename
 	for _, part := range parts {
 		partWithPlaceholder := strings.ReplaceAll(part, "?", qmPlaceholder)
+		partWithPlaceholder = strings.ReplaceAll(partWithPlaceholder, "%26", ampPlaceholder)
+		partWithPlaceholder = strings.ReplaceAll(partWithPlaceholder, "%26", ampPlaceholder)
 		unescaped, err := url.PathUnescape(partWithPlaceholder)
 		if err != nil {
 			d.logger.Error().Err(err).Str("name", name).Str("part", part).Msg("failed to unescape path")
@@ -80,6 +85,7 @@ func (d *webFSRW) buildURL(name string) string {
 		}
 	}
 	name = strings.ReplaceAll(name, qmPlaceholder, "?")
+	name = strings.ReplaceAll(name, ampPlaceholder, "%26")
 	urlStr := strings.ReplaceAll(d.baseuri, "%%PATH%%", name)
 	return urlStr
 }
