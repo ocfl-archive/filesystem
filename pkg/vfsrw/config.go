@@ -15,6 +15,9 @@ type SFTP struct {
 	User       config.EnvString `toml:"user"`
 	Password   config.EnvString `toml:"password"`
 	PrivateKey []string         `toml:"privatekey"`
+	// ZipAsFolderCache is the number of concurrent requests to the zipasfolder.
+	// Deprecated: use VFS.ZipAsFolder.CacheSize instead.
+	ZipAsFolderCache uint `toml:"zipasfoldercache"`
 }
 
 type Web struct {
@@ -24,6 +27,9 @@ type Web struct {
 }
 type OS struct {
 	BaseDir string `toml:"basedir"`
+	// ZipAsFolderCache is the number of concurrent requests to the zipasfolder.
+	// Deprecated: use VFS.ZipAsFolder.CacheSize instead.
+	ZipAsFolderCache uint `toml:"zipasfoldercache"`
 }
 
 type Remote struct {
@@ -46,6 +52,9 @@ type S3 struct {
 	BaseUrl         string           `toml:"baseurl"`
 	DNSNetwork      string           `toml:"dnsnetwork"`
 	DNSAddress      string           `toml:"dnsaddress"`
+	// ZipAsFolderCache is the number of concurrent requests to the zipasfolder.
+	// Deprecated: use VFS.ZipAsFolder.CacheSize instead.
+	ZipAsFolderCache uint `toml:"zipasfoldercache"`
 }
 
 type MiniKVStore struct {

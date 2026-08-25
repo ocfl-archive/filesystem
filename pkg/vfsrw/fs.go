@@ -50,6 +50,18 @@ type vfsStruct struct {
 }
 
 func NewFS(config Config, logger zLogger.ZLogger) (VFSRW, error) {
+	// for old configs
+	for _, cfg := range config {
+		if cfg.OS != nil && cfg.OS.ZipAsFolderCache > 0 && cfg.ZipAsFolder == nil {
+			cfg.ZipAsFolder = &ZipAsFolder{Enabled: true, ReadOnly: true, CacheSize: cfg.OS.ZipAsFolderCache}
+		}
+		if cfg.S3 != nil && cfg.S3.ZipAsFolderCache > 0 && cfg.ZipAsFolder == nil {
+			cfg.ZipAsFolder = &ZipAsFolder{Enabled: true, ReadOnly: true, CacheSize: cfg.S3.ZipAsFolderCache}
+		}
+		if cfg.SFTP != nil && cfg.SFTP.ZipAsFolderCache > 0 && cfg.ZipAsFolder == nil {
+			cfg.ZipAsFolder = &ZipAsFolder{Enabled: true, ReadOnly: true, CacheSize: cfg.SFTP.ZipAsFolderCache}
+		}
+	}
 
 	logger = new(logger.With().Str("module", "vfsrw").Logger())
 
