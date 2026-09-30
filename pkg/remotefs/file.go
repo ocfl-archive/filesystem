@@ -31,11 +31,7 @@ type file struct {
 var contentRangeRegexp = regexp.MustCompile(`^bytes ([0-9]+-[0-9]+|\*)/([0-9*]+)$`)
 
 func (f *file) init(pos int64) error {
-	f.client = &http.Client{
-		Transport: &http.Transport{
-			ForceAttemptHTTP2: true,
-		},
-	}
+	f.client = f.d.client
 	f.size = 0
 	req, err := http.NewRequest(http.MethodGet, f.url, nil)
 	if err != nil {
@@ -52,8 +48,8 @@ func (f *file) init(pos int64) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot send request for '%s'", f.url)
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		_ = resp.Body.Close()
 		return errors.Errorf("invalid status '%s' for '%s'", resp.Status, f.url)
 	}
 	f.rc = resp.Body
@@ -95,19 +91,32 @@ func (f *file) init(pos int64) error {
 func (f *file) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	case io.SeekStart:
+		if offset < 0 {
+			return 0, errors.Errorf("invalid offset %d for SeekStart (must be non-negative)", offset)
+		}
 		f.pos = offset
 	case io.SeekCurrent:
+		if f.pos+offset < 0 {
+			return 0, errors.Errorf("invalid resulting offset %d for SeekCurrent (must be non-negative)", f.pos+offset)
+		}
 		f.pos += offset
 	case io.SeekEnd:
 		if f.size == -1 {
 			return 0, errors.New("cannot seek to end of file because file size is unknown")
 		}
+		if f.size+offset < 0 {
+			return 0, errors.Errorf("invalid resulting offset %d for SeekEnd (must be non-negative)", f.size+offset)
+		}
 		f.pos = f.size + offset
 	default:
 		return 0, errors.Errorf("unknown whence: %d", whence)
 	}
+	if f.pos < f.size {
+		f.eof = false
+	}
 	if f.rc != nil {
 		f.rc.Close()
+		f.rc = nil
 	}
 	if f.client == nil {
 		f.init(f.pos)
@@ -127,6 +136,7 @@ func (f *file) Read(p []byte) (n int, err error) {
 	if f.pos >= f.size && f.size != -1 {
 		if f.rc != nil {
 			f.rc.Close()
+			f.rc = nil
 		}
 		f.eof = true
 		return 0, io.EOF
@@ -142,7 +152,7 @@ func (f *file) Read(p []byte) (n int, err error) {
 		if f.token != "" {
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", f.token))
 		}
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := f.d.client.Do(req)
 		if err != nil {
 			return 0, errors.Wrapf(err, "cannot send request for '%s'", f.url)
 		}

@@ -24,7 +24,8 @@ func NewFS(tlsConfig *tls.Config, addr string, dir, vfs string, closer []io.Clos
 	return &remoteFSRW{
 		client: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
+				TLSClientConfig:   tlsConfig,
+				ForceAttemptHTTP2: true,
 			},
 		},
 		readOnly: readOnly,
