@@ -43,17 +43,21 @@ type fsFile struct {
 	fp io.Closer
 }
 
+func (f *fsFile) Sub(dir string) (fs.FS, error) {
+	return writefs.NewSubFS(f, dir)
+}
+
 func (f *fsFile) Close() error {
 	return errors.Wrapf(f.fp.Close(), "cannot close file '%v'", f.fp)
 }
 
 var (
-	_ fs.FS           = (*fsFile)(nil)
-	_ writefs.CloseFS = (*fsFile)(nil)
-	_ fs.ReadDirFS    = (*fsFile)(nil)
-	_ fs.ReadFileFS   = (*fsFile)(nil)
-	_ fs.StatFS       = (*fsFile)(nil)
-	//_ fs.SubFS           = (*fsFile)(nil)
+	_ fs.FS              = (*fsFile)(nil)
+	_ writefs.CloseFS    = (*fsFile)(nil)
+	_ fs.ReadDirFS       = (*fsFile)(nil)
+	_ fs.ReadFileFS      = (*fsFile)(nil)
+	_ fs.StatFS          = (*fsFile)(nil)
+	_ fs.SubFS           = (*fsFile)(nil)
 	_ writefs.IsLockedFS = (*fsFile)(nil)
 	_ OpenRawZipFS       = (*fsFile)(nil)
 	_ fmt.Stringer       = (*fsFile)(nil)

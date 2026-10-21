@@ -3,6 +3,7 @@ package aferoFS
 import (
 	"io"
 	"io/fs"
+	"sync"
 
 	"emperror.dev/errors"
 	"github.com/spf13/afero"
@@ -10,6 +11,13 @@ import (
 
 type file struct {
 	afero.File
+	mu sync.Mutex
+}
+
+func (f *file) ReadAt(b []byte, off int64) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.File.ReadAt(b, off)
 }
 
 func (f *file) Stat() (fs.FileInfo, error) {

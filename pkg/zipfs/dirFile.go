@@ -1,55 +1,90 @@
 package zipfs
 
 import (
+	"io"
 	"io/fs"
 	"path"
-	"strings"
+	"sync"
 
 	"emperror.dev/errors"
 	"github.com/ocfl-archive/filesystem/pkg/writefs"
-	"golang.org/x/exp/maps"
 )
 
-func NewDirFile(zfs *zipFS, folder string) *dirFile {
+func NewDirFile(zfs *zipFS, folder string, entries []fs.DirEntry) *dirFile {
+	if zfs != nil {
+		zfs.IncRef()
+	}
 	return &dirFile{
-		zfs:    zfs,
-		folder: strings.Trim(folder, "/") + "/",
+		zfs:     zfs,
+		folder:  folder,
+		entries: entries,
 	}
 }
 
 type dirFile struct {
-	zfs    *zipFS
-	folder string
+	zfs       *zipFS
+	folder    string
+	entries   []fs.DirEntry
+	offset    int
+	mu        sync.Mutex
+	closeOnce sync.Once
 }
 
 func (d *dirFile) ReadDir(n int) ([]fs.DirEntry, error) {
-	var results = map[string]fs.DirEntry{}
-	var count int
-	for _, fi := range d.zfs.File {
-		if !strings.HasPrefix(fi.Name, d.folder) {
-			continue
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.entries == nil {
+		if n <= 0 {
+			return nil, nil
 		}
-		de := writefs.NewDirEntry(fi.FileInfo())
-		results[de.Name()] = de
-		count++
-		if count >= n {
-			break
-		}
+		return nil, io.EOF
 	}
-	return maps.Values(results), nil
+
+	if n <= 0 {
+		if d.offset >= len(d.entries) {
+			return nil, nil
+		}
+		res := d.entries[d.offset:]
+		d.offset = len(d.entries)
+		return res, nil
+	}
+
+	if d.offset >= len(d.entries) {
+		return nil, io.EOF
+	}
+
+	end := d.offset + n
+	if end > len(d.entries) {
+		end = len(d.entries)
+	}
+	res := d.entries[d.offset:end]
+	d.offset = end
+	return res, nil
 }
 
 func (d *dirFile) Stat() (fs.FileInfo, error) {
-	return writefs.NewFileInfoDir(path.Base(d.folder)), nil
+	name := path.Base(d.folder)
+	if name == "." || name == "/" || d.folder == "" {
+		name = "."
+	}
+	return writefs.NewFileInfoDir(name), nil
 }
 
 func (d *dirFile) Read(bytes []byte) (int, error) {
-	return 0, errors.New("not implemented")
+	return 0, &fs.PathError{Op: "read", Path: d.folder, Err: errors.New("is a directory")}
 }
 
 func (d *dirFile) Close() error {
+	d.closeOnce.Do(func() {
+		if d.zfs != nil {
+			d.zfs.DecRef()
+		}
+	})
 	return nil
 }
 
-var _ fs.File = (*dirFile)(nil)
-var _ fs.ReadDirFile = (*dirFile)(nil)
+var (
+	_ fs.File        = (*dirFile)(nil)
+	_ fs.ReadDirFile = (*dirFile)(nil)
+)

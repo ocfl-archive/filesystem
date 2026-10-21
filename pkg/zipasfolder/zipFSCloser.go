@@ -44,7 +44,7 @@ func (zipFS *zipFSCloser) IsClosed() bool {
 func (zipFS *zipFSCloser) Stat(name string) (fs.FileInfo, error) {
 	statFS, ok := zipFS.FS.(fs.StatFS)
 	if !ok {
-		return nil, errors.New("s3FSRW does not implement StatFS")
+		return nil, errors.New("zipFS does not implement StatFS")
 	}
 	return statFS.Stat(name)
 }
@@ -52,7 +52,7 @@ func (zipFS *zipFSCloser) Stat(name string) (fs.FileInfo, error) {
 func (zipFS *zipFSCloser) ReadDir(name string) ([]fs.DirEntry, error) {
 	readDirFS, ok := zipFS.FS.(fs.ReadDirFS)
 	if !ok {
-		return nil, errors.New("s3FSRW does not implement ReadDirFS")
+		return nil, errors.New("zipFS does not implement ReadDirFS")
 	}
 	return readDirFS.ReadDir(name)
 }

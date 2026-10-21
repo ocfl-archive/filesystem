@@ -1,6 +1,7 @@
 package zipasfolder
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,23 +15,29 @@ import (
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/maypok86/otter/v2"
 	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"golang.org/x/sync/singleflight"
 )
 
 type fileCloser struct {
 	fs.File
 	closeFunc func() error
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func (fc *fileCloser) Close() error {
-	err := fc.File.Close()
-	if fc.closeFunc != nil {
-		if err2 := fc.closeFunc(); err2 != nil {
-			if err == nil {
-				err = err2
+	fc.closeOnce.Do(func() {
+		err := fc.File.Close()
+		if fc.closeFunc != nil {
+			if err2 := fc.closeFunc(); err2 != nil {
+				if err == nil {
+					err = err2
+				}
 			}
 		}
-	}
-	return err
+		fc.closeErr = err
+	})
+	return fc.closeErr
 }
 
 // NewFS creates a new zipAsFolderFS which handles zipfiles like folders which are read-only
@@ -40,10 +47,11 @@ func NewFS(baseFS fs.FS, cacheSize int, timeout time.Duration, readOnly bool, lo
 		timeout = time.Minute
 	}
 	logger = new(logger.With().Str("class", "zipAsFolderFS").Logger())
+	ctx, cancel := context.WithCancel(context.Background())
 	f := &zipAsFolderFS{
 		baseFS:   baseFS,
 		readOnly: readOnly,
-		end:      make(chan bool),
+		cancel:   cancel,
 		logger:   logger,
 		toClose:  []fs.FS{},
 	}
@@ -52,59 +60,54 @@ func NewFS(baseFS fs.FS, cacheSize int, timeout time.Duration, readOnly bool, lo
 		OnAtomicDeletion: func(e otter.DeletionEvent[string, fs.FS]) {
 			// This function is called when an item is removed from the cache (evicted or invalidated).
 			zipFS := e.Value
-
-			f.lock.Lock()
-			// We cannot close the zipFS immediately if it's still in use (RefCount > 0)
-			// or if it's currently being modified/locked.
+			f.toCloseLock.Lock()
 			rc := getRefCount(zipFS)
 			if isLocked(zipFS) || rc > 0 {
-				// If still in use, we move it to a 'toClose' list to be closed later by ClearUnlocked.
 				f.toClose = append(f.toClose, zipFS)
-				f.lock.Unlock()
+				f.toCloseLock.Unlock()
 			} else {
-				// If not in use, we can close it immediately.
-				f.lock.Unlock()
+				f.toCloseLock.Unlock()
 				writefs.Close(zipFS)
 			}
 		},
 	})
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "cannot create otter cache")
 	}
 	f.zipCache = zipCache
 	go func() {
 		// This goroutine periodically checks for zip files that are no longer in use
 		// and can be safely closed. This includes files in the 'toClose' list.
-		for alive := true; alive; {
-			timer := time.NewTimer(timeout)
+		ticker := time.NewTicker(timeout)
+		defer ticker.Stop()
+		for {
 			select {
-			case <-f.end:
-				timer.Stop()
-				alive = false
-			case <-timer.C:
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
 				f.ClearUnlocked()
 			}
 		}
 	}()
 	// runtime.AddCleanup ensures that the background goroutine is stopped
 	// when the zipAsFolderFS object is garbage collected.
-	runtime.AddCleanup(f, func(end chan bool) {
-		select {
-		case end <- true:
-		default:
-		}
-	}, f.end)
+	runtime.AddCleanup(f, func(cancelFunc context.CancelFunc) {
+		cancelFunc()
+	}, cancel)
 	return f, nil
 }
 
 type zipAsFolderFS struct {
-	baseFS   fs.FS
-	zipCache *otter.Cache[string, fs.FS]
-	lock     sync.RWMutex
-	end      chan bool
-	logger   zLogger.ZLogger
-	readOnly bool
-	toClose  []fs.FS
+	baseFS      fs.FS
+	zipCache    *otter.Cache[string, fs.FS]
+	sf          singleflight.Group
+	cancel      context.CancelFunc
+	closeOnce   sync.Once
+	logger      zLogger.ZLogger
+	readOnly    bool
+	toCloseLock sync.Mutex
+	toClose     []fs.FS
 }
 
 func (fsys *zipAsFolderFS) IsWriteable(path string) bool {
@@ -133,7 +136,7 @@ func (fsys *zipAsFolderFS) String() string {
 	return fmt.Sprintf("zipAsFolderFS(%s)", fsys.baseFS)
 }
 
-// CReate creates a new file
+// Create creates a new file
 func (fsys *zipAsFolderFS) Create(path string) (writefs.FileWrite, error) {
 	if fsys.readOnly {
 		return nil, errors.New("read-only filesystem")
@@ -143,7 +146,7 @@ func (fsys *zipAsFolderFS) Create(path string) (writefs.FileWrite, error) {
 	if isZIP && zipPath != "" {
 		return nil, errors.Errorf("cannot create file '%s' in zip file '%s'", path, zipFile)
 	}
-	return writefs.Create(fsys.baseFS, path)
+	return writefs.Create(fsys.baseFS, zipFile)
 }
 
 // MkDir creates a new folder
@@ -156,39 +159,54 @@ func (fsys *zipAsFolderFS) MkDir(path string) error {
 	if isZIP && zipPath != "" {
 		return errors.Errorf("cannot create folder '%s' in zip file '%s'", path, zipFile)
 	}
-	return writefs.MkDir(fsys.baseFS, path)
+	return writefs.MkDir(fsys.baseFS, zipFile)
 }
 
 // getZipFS retrieves a zip filesystem from the cache or loads it if not present.
 // It increases the reference count of the returned filesystem.
 func (fsys *zipAsFolderFS) getZipFS(zipFile string) (fs.FS, error) {
-	fsys.lock.Lock()
-	defer fsys.lock.Unlock()
-
 	// Check if already in cache and not closed
 	if zipFS, ok := fsys.zipCache.GetIfPresent(zipFile); ok {
+		incRef(zipFS)
 		if !isClosed(zipFS) {
-			incRef(zipFS)
 			return zipFS, nil
 		}
+		decRef(zipFS)
 	}
 
-	// Load zip file from base filesystem
-	fsys.logger.Debug().Msgf("load zip file '%s'", zipFile)
-	f, err := fsys.baseFS.Open(zipFile)
+	// Use singleflight to deduplicate concurrent loading of the same archive
+	v, err, _ := fsys.sf.Do(zipFile, func() (any, error) {
+		// Double-check cache inside singleflight
+		if zipFS, ok := fsys.zipCache.GetIfPresent(zipFile); ok {
+			if !isClosed(zipFS) {
+				return zipFS, nil
+			}
+		}
+
+		// Load zip file from base filesystem
+		fsys.logger.Debug().Msgf("load zip file '%s'", zipFile)
+		f, err := fsys.baseFS.Open(zipFile)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot open zip file '%s'", zipFile)
+		}
+		// Create a new zip filesystem wrapper that supports reference counting and closing
+		zipFS, err := NewZipFSCloser(f, zipFile, fsys.logger)
+		if err != nil {
+			fsys.logger.Debug().Msgf("load zip file '%s' FAILED: %v", zipFile, err)
+			return nil, errors.Wrapf(err, "cannot create zipfscloser for '%s'", zipFile)
+		}
+		fsys.zipCache.Set(zipFile, zipFS)
+		return zipFS, nil
+	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot open zip file '%s'", zipFile)
+		return nil, err
 	}
-	// Create a new zip filesystem wrapper that supports reference counting and closing
-	zipFS, err := NewZipFSCloser(f, zipFile, fsys.logger)
-	if err != nil {
-		fsys.logger.Debug().Msgf("load zip file '%s' FAILED: %v", zipFile, err)
-		return nil, errors.Wrapf(err, "cannot create zipfscloser for '%s'", zipFile)
-	}
-	// Initial reference count for the current caller
+	zipFS := v.(fs.FS)
 	incRef(zipFS)
-	// Add to cache. If an old entry is evicted, OnAtomicDeletion will be triggered.
-	fsys.zipCache.Set(zipFile, zipFS)
+	if isClosed(zipFS) {
+		decRef(zipFS)
+		return fsys.getZipFS(zipFile)
+	}
 	return zipFS, nil
 }
 
@@ -199,10 +217,10 @@ func (fsys *zipAsFolderFS) Stat(name string) (fs.FileInfo, error) {
 	zipFile, zipPath, isZIP := expandZipFile(name)
 	fsys.logger.Debug().Msgf("expandZipFile('%s') -> zipFile='%s', zipPath='%s', isZIP=%v", name, zipFile, zipPath, isZIP)
 	if !isZIP {
-		if name == "" {
-			name = "."
+		if zipFile == "" {
+			zipFile = "."
 		}
-		info, err := fs.Stat(fsys.baseFS, name)
+		info, err := fs.Stat(fsys.baseFS, zipFile)
 		if err != nil {
 			return info, errors.Wrapf(err, "cannot stat file '%s'", name)
 		}
@@ -264,10 +282,10 @@ func (fsys *zipAsFolderFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	zipFile, zipPath, isZIP := expandZipFile(name)
 	fsys.logger.Debug().Msgf("expandZipFile('%s') -> zipFile='%s', zipPath='%s', isZIP=%v", name, zipFile, zipPath, isZIP)
 	if !isZIP {
-		if name == "" {
-			name = "."
+		if zipFile == "" {
+			zipFile = "."
 		}
-		entries, err := fs.ReadDir(fsys.baseFS, name)
+		entries, err := fs.ReadDir(fsys.baseFS, zipFile)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot read directory '%s'", name)
 		}
@@ -298,24 +316,11 @@ func (fsys *zipAsFolderFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	return entries, nil
 }
 
-// Open opens a file from the filesystem
+// Sub returns an fs.FS corresponding to the subtree rooted at name.
 func (fsys *zipAsFolderFS) Sub(name string) (fs.FS, error) {
-	fsys.logger.Debug().Msgf("Open('%s')", name)
+	fsys.logger.Debug().Msgf("Sub('%s')", name)
 	name = clearPath(name)
-	zipFile, zipPath, isZIP := expandZipFile(name)
-	fsys.logger.Debug().Msgf("expandZipFile('%s') -> zipFile='%s', zipPath='%s', isZIP=%v", name, zipFile, zipPath, isZIP)
-	if !isZIP {
-		return writefs.NewSubFS(fsys, name)
-	}
-
-	zipFS, err := fsys.getZipFS(zipFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
-	}
-	if zipPath == "" {
-		return zipFS, nil
-	}
-	return fs.Sub(zipFS, zipPath)
+	return writefs.NewSubFS(fsys, name)
 }
 
 // Open opens a file from the filesystem
@@ -325,7 +330,7 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 	zipFile, zipPath, isZIP := expandZipFile(name)
 	fsys.logger.Debug().Msgf("expandZipFile('%s') -> zipFile='%s', zipPath='%s', isZIP=%v", name, zipFile, zipPath, isZIP)
 	if !isZIP {
-		file, err := fsys.baseFS.Open(name)
+		file, err := fsys.baseFS.Open(zipFile)
 		if err != nil {
 			return file, errors.Wrapf(err, "cannot open file '%s'", name)
 		}
@@ -358,12 +363,15 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 
 // Close closes the filesystem and underlying fs if possible
 func (fsys *zipAsFolderFS) Close() error {
-	fsys.end <- true
-	fsys.zipCache.InvalidateAll()
+	fsys.closeOnce.Do(func() {
+		fsys.cancel()
+		fsys.zipCache.InvalidateAll()
+		fsys.ClearUnlocked()
 
-	if closer, ok := fsys.baseFS.(io.Closer); ok {
-		closer.Close()
-	}
+		if closer, ok := fsys.baseFS.(io.Closer); ok {
+			closer.Close()
+		}
+	})
 	return nil
 }
 
@@ -378,8 +386,8 @@ func (fsys *zipAsFolderFS) ClearUnlocked() error {
 		}
 	}
 
-	fsys.lock.Lock()
-	defer fsys.lock.Unlock()
+	fsys.toCloseLock.Lock()
+	defer fsys.toCloseLock.Unlock()
 
 	// 2. Check the 'toClose' list.
 	// This list contains zip files that were evicted from the cache but were still in use.
@@ -397,7 +405,8 @@ func (fsys *zipAsFolderFS) ClearUnlocked() error {
 	return nil
 }
 func isZipFile(name string) bool {
-	return strings.ToLower(filepath.Ext(name)) == ".zip" || strings.ToLower(filepath.Ext(name)) == ".zip#zip"
+	lower := strings.ToLower(name)
+	return strings.HasSuffix(lower, ".zip") || strings.HasSuffix(lower, ".zip#zip")
 }
 
 func expandZipFile(name string) (zipFile string, zipPath string, isZip bool) {
@@ -410,8 +419,8 @@ func expandZipFile(name string) (zipFile string, zipPath string, isZip bool) {
 		if isZipFile(parts[i]) {
 			zipFile = strings.Join(parts[:i+1], "/")
 			zipPath = strings.Join(parts[i+1:], "/")
-			if strings.HasSuffix(zipFile, "#zip") {
-				zipFile = strings.TrimSuffix(zipFile, "#zip")
+			if before, ok := strings.CutSuffix(zipFile, "#zip"); ok {
+				zipFile = before
 				if zipPath == "" {
 					return zipFile, "", false
 				}

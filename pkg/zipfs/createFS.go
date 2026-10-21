@@ -11,15 +11,25 @@ import (
 
 func NewCreateFSFunc(logger zLogger.ZLogger) writefs.CreateFSFunc {
 	return func(f writefs.IFactory, zipFile string, readOnly bool) (fs.FS, error) {
-		parts := strings.Split(zipFile, "/")
-		if len(parts) < 2 {
-			return nil, errors.Errorf("invalid zip path: %s", zipFile)
+		zipFile = clearPath(zipFile)
+		if zipFile == "" {
+			return nil, errors.New("empty zip path")
 		}
-		baseFS, err := f.Get(strings.Join(parts[:len(parts)-1], "/"), readOnly)
+		parts := strings.Split(zipFile, "/")
+		var baseFolder string
+		var fileName string
+		if len(parts) == 1 {
+			baseFolder = ""
+			fileName = parts[0]
+		} else {
+			baseFolder = strings.Join(parts[:len(parts)-1], "/")
+			fileName = parts[len(parts)-1]
+		}
+		baseFS, err := f.Get(baseFolder, readOnly)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot get base filesystem for '%s'", zipFile)
 		}
-		zipFS, err := NewFSFile(baseFS, parts[len(parts)-1], logger)
+		zipFS, err := NewFSFile(baseFS, fileName, logger)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot create zip filesystem for '%s'", zipFile)
 		}

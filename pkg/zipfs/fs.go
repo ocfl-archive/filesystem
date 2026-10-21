@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path"
+	"slices"
 	"strings"
 	"sync/atomic"
 
 	"emperror.dev/errors"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/ocfl-archive/filesystem/pkg/writefs"
-	"golang.org/x/exp/slices"
 )
 
 type OpenRawZipFS interface {
@@ -21,14 +22,78 @@ type OpenRawZipFS interface {
 }
 
 // NewFS creates a new fs.FS from a readerAt and size
-// it implements fs.FS, fs.ReadDirFS, fs.ReadFileFS, fs.StatFS, fs.SubFS, basefs.IsLockedFS
-func NewFS(r io.ReaderAt, size int64, name string, logger zLogger.ZLogger) (fs *zipFS, err error) {
+// it implements fs.FS, fs.ReadDirFS, fs.ReadFileFS, fs.StatFS, fs.SubFS, writefs.IsLockedFS
+func NewFS(r io.ReaderAt, size int64, name string, logger zLogger.ZLogger) (*zipFS, error) {
 	zipReader, err := zip.NewReader(r, size)
 	if err != nil {
 		return nil, err
 	}
+
+	files := make(map[string]*zip.File, len(zipReader.File))
+	dirEntries := make(map[string]map[string]fs.DirEntry)
+	dirEntries[""] = make(map[string]fs.DirEntry)
+
+	for _, f := range zipReader.File {
+		cleanName := clearPath(f.Name)
+		if cleanName == "" {
+			continue
+		}
+
+		isDir := strings.HasSuffix(f.Name, "/") || f.FileInfo().IsDir()
+		if isDir {
+			if _, ok := dirEntries[cleanName]; !ok {
+				dirEntries[cleanName] = make(map[string]fs.DirEntry)
+			}
+		} else {
+			files[cleanName] = f
+		}
+
+		curr := cleanName
+		isLeaf := true
+		for curr != "" {
+			parent := path.Dir(curr)
+			if parent == "." {
+				parent = ""
+			}
+			base := path.Base(curr)
+
+			if _, ok := dirEntries[parent]; !ok {
+				dirEntries[parent] = make(map[string]fs.DirEntry)
+			}
+
+			if isLeaf {
+				if isDir {
+					dirEntries[parent][base] = writefs.NewDirEntry(f.FileInfo())
+				} else {
+					dirEntries[parent][base] = writefs.NewDirEntry(f.FileInfo())
+				}
+				isLeaf = false
+			} else {
+				if _, exists := dirEntries[parent][base]; !exists {
+					dirEntries[parent][base] = writefs.NewDirEntry(writefs.NewFileInfoDir(base))
+				}
+			}
+
+			curr = parent
+		}
+	}
+
+	dirs := make(map[string][]fs.DirEntry, len(dirEntries))
+	for dirPath, entryMap := range dirEntries {
+		entries := make([]fs.DirEntry, 0, len(entryMap))
+		for _, entry := range entryMap {
+			entries = append(entries, entry)
+		}
+		slices.SortFunc(entries, func(a, b fs.DirEntry) int {
+			return strings.Compare(a.Name(), b.Name())
+		})
+		dirs[dirPath] = entries
+	}
+
 	return &zipFS{
-		Reader: zipReader,
+		reader: zipReader,
+		files:  files,
+		dirs:   dirs,
 		mutex:  writefs.NewMutex(),
 		name:   name,
 		logger: logger,
@@ -36,7 +101,9 @@ func NewFS(r io.ReaderAt, size int64, name string, logger zLogger.ZLogger) (fs *
 }
 
 type zipFS struct {
-	*zip.Reader
+	reader   *zip.Reader
+	files    map[string]*zip.File
+	dirs     map[string][]fs.DirEntry
 	mutex    *writefs.Mutex
 	name     string
 	logger   zLogger.ZLogger
@@ -79,19 +146,14 @@ func (zfs *zipFS) String() string {
 }
 
 func (zfs *zipFS) GetZipReader() *zip.Reader {
-	return zfs.Reader
+	return zfs.reader
 }
 
-/*
 func (zfs *zipFS) Sub(dir string) (fs.FS, error) {
-	return writefs.Sub(zfs, dir)
+	return writefs.NewSubFS(zfs, dir)
 }
-
-*/
 
 func (zfs *zipFS) Stat(name string) (fs.FileInfo, error) {
-	zfs.mutex.Lock()
-	defer zfs.mutex.Unlock()
 	return zfs.stat(name)
 }
 
@@ -100,110 +162,77 @@ func (zfs *zipFS) stat(name string) (fs.FileInfo, error) {
 	if name == "" {
 		return writefs.NewFileInfoDir("."), nil
 	}
-	for _, f := range zfs.File {
-		if strings.HasPrefix(f.Name, name) && len(f.Name) != len(name) && f.Name[len(name)] == '/' {
-			return writefs.NewFileInfoDir(name), nil
-		}
-		if f.Name == name {
-			return f.FileInfo(), nil
-		}
+	if f, ok := zfs.files[name]; ok {
+		return f.FileInfo(), nil
 	}
-	return nil, fs.ErrNotExist
+	if _, ok := zfs.dirs[name]; ok {
+		return writefs.NewFileInfoDir(path.Base(name)), nil
+	}
+	return nil, &fs.PathError{Op: "stat", Path: name, Err: fs.ErrNotExist}
 }
 
 func (zfs *zipFS) ReadFile(name string) ([]byte, error) {
-	zfs.mutex.Lock()
-	defer zfs.mutex.Unlock()
 	name = clearPath(name)
-	for _, f := range zfs.File {
-		if f.Name == name {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, err
-			}
-			data, err := io.ReadAll(rc)
-			rc.Close()
-			return data, err
-		}
+	f, ok := zfs.files[name]
+	if !ok {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 	}
-	return nil, fs.ErrNotExist
+	rc, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	return io.ReadAll(rc)
 }
 
 func (zfs *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	zfs.mutex.Lock()
-	defer zfs.mutex.Unlock()
 	name = clearPath(name)
-	if name != "" {
-		name += "/"
+	entries, ok := zfs.dirs[name]
+	if !ok {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrNotExist}
 	}
-	var result []fs.DirEntry
-	for _, f := range zfs.File {
-		if strings.HasPrefix(f.Name, name) {
-			parts := strings.Split(strings.Trim(f.Name[len(name):], "/"), "/")
-			if len(parts) == 1 {
-				if parts[0] != "" {
-					result = append(result, writefs.NewDirEntry(f.FileInfo()))
-				}
-				continue
-			}
-			result = append(result, writefs.NewDirEntry(writefs.NewFileInfoDir(parts[0])))
-		}
-	}
-	slices.SortFunc(result, func(i, j fs.DirEntry) int {
-		return strings.Compare(i.Name(), j.Name())
-	})
-	return slices.CompactFunc(result, func(i, j fs.DirEntry) bool {
-		return i.Name() == j.Name()
-	}), nil
-
+	return entries, nil
 }
 
 func (zfs *zipFS) Open(name string) (fs.File, error) {
-	zfs.mutex.Lock()
-	defer zfs.mutex.Unlock()
 	name = clearPath(name)
-	namePrefix := name + "/"
-	for _, f := range zfs.File {
-		if strings.HasPrefix(f.Name, namePrefix) {
-			return NewDirFile(zfs, name), nil
-		} else if f.Name == name {
-			if f.Method == zip.Store {
-				w, err := f.OpenRaw()
-				if err != nil {
-					return nil, errors.Wrapf(err, "failed to open file in raw mode '%s'", name)
-				}
-				if rseeker, ok := w.(io.ReadSeeker); ok {
-					zfs.IncRef()
-					return NewFile[io.ReadSeeker](f.FileInfo(), rseeker, zfs.mutex, zfs.DecRef), nil
-				}
-				zfs.IncRef()
-				return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
-			}
-			w, err := f.Open()
+	if name == "" {
+		entries := zfs.dirs[""]
+		return NewDirFile(zfs, "", entries), nil
+	}
+	if entries, ok := zfs.dirs[name]; ok {
+		return NewDirFile(zfs, name, entries), nil
+	}
+	if f, ok := zfs.files[name]; ok {
+		if f.Method == zip.Store {
+			w, err := f.OpenRaw()
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to open file '%s'", name)
+				return nil, errors.Wrapf(err, "failed to open file in raw mode '%s'", name)
 			}
 			zfs.IncRef()
-			return NewFile[io.Reader](f.FileInfo(), w, zfs.mutex, zfs.DecRef), nil
+			return NewFile(f.FileInfo(), w, zfs.DecRef), nil
 		}
+		w, err := f.Open()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to open file '%s'", name)
+		}
+		zfs.IncRef()
+		return NewFile(f.FileInfo(), w, zfs.DecRef), nil
 	}
-	return nil, fs.ErrNotExist
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
 func (zfs *zipFS) OpenRaw(name string) (fs.File, *zip.FileHeader, error) {
-	zfs.mutex.Lock()
-	defer zfs.mutex.Unlock()
-	for _, f := range zfs.File {
-		if f.Name == name {
-			w, err := f.OpenRaw()
-			if err != nil {
-				return nil, nil, errors.Wrapf(err, "failed to open file '%s'", name)
-			}
-			zfs.IncRef()
-			return NewFile(f.FileInfo(), writefs.NewNopReadCloser(w), zfs.mutex, zfs.DecRef), &f.FileHeader, nil
+	name = clearPath(name)
+	if f, ok := zfs.files[name]; ok {
+		w, err := f.OpenRaw()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "failed to open file '%s'", name)
 		}
+		zfs.IncRef()
+		return NewFile(f.FileInfo(), writefs.NewNopReadCloser(w), zfs.DecRef), &f.FileHeader, nil
 	}
-	return nil, nil, fs.ErrNotExist
+	return nil, nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
 func (zfs *zipFS) IsLocked() bool {
@@ -222,5 +251,5 @@ var (
 	_ fs.ReadDirFS        = (*zipFS)(nil)
 	_ fs.ReadFileFS       = (*zipFS)(nil)
 	_ fs.StatFS           = (*zipFS)(nil)
-	//_ fs.SubFS            = (*zipFS)(nil)
+	_ fs.SubFS            = (*zipFS)(nil)
 )
