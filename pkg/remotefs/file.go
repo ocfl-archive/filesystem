@@ -111,7 +111,9 @@ func (f *file) Seek(offset int64, whence int) (int64, error) {
 	default:
 		return 0, errors.Errorf("unknown whence: %d", whence)
 	}
-	if f.pos < f.size {
+	if f.size != -1 {
+		f.eof = f.pos >= f.size
+	} else {
 		f.eof = false
 	}
 	if f.rc != nil {
