@@ -337,14 +337,13 @@ func (fsys *zipAsFolderFS) Open(name string) (fs.File, error) {
 		return file, nil
 	}
 
+	if zipPath == "" {
+		return fsys.baseFS.Open(zipFile)
+	}
+
 	zipFS, err := fsys.getZipFS(zipFile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get zip file '%s'", zipFile)
-	}
-
-	if zipPath == "" {
-		decRef(zipFS)
-		return fsys.baseFS.Open(zipFile)
 	}
 
 	rc, err := zipFS.Open(zipPath)

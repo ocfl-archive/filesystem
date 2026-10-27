@@ -37,6 +37,9 @@ type ChecksumFunc func(css map[checksum.DigestAlgorithm]string) error
 // The name is used for identification (e.g. in Equal).
 // The logger is used for logging errors.
 func NewFS(writer io.Writer, closeWriter bool, noCompression bool, name string, algs []checksum.DigestAlgorithm, csFunc ChecksumFunc, logger zLogger.ZLogger) (fs.FS, error) {
+	if writer == nil {
+		return nil, errors.New("writer cannot be nil")
+	}
 	var csWriter *checksum.ChecksumWriter
 	var w = writer
 	var err error

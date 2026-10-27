@@ -338,7 +338,7 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	zipAsFolder := conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled && strings.HasSuffix(dir, ".zip")
+	zipAsFolder := conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.Enabled && strings.HasSuffix(strings.ToLower(dir), ".zip")
 
 	if !zipAsFolder {
 		if err := writefs.MkDir(vfs, dir); err != nil {
@@ -362,7 +362,7 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, errors.WithStack(err)
 	}
-	if conf.ReadOnly || (conf.ZipAsFolder != nil && conf.ZipAsFolder.ReadOnly) {
+	if conf != nil && (conf.ReadOnly || (conf.ZipAsFolder != nil && conf.ZipAsFolder.ReadOnly)) {
 		return nil, errors.Wrapf(fs.ErrNotExist, "cannot create zip file '%s' in read-only filesystem", dir)
 	}
 	fp, err := writefs.Create(vfs, dir)
@@ -370,56 +370,23 @@ func (vfs *vFSRW) SubCreate(dir string) (fs.FS, error) {
 		return nil, errors.Wrapf(err, "cannot create zip file '%s'", dir)
 	}
 	var encFP io.WriteCloser
-	if conf.ZipAsFolder != nil && conf.ZipAsFolder.AES != nil && conf.ZipAsFolder.AES.Enable {
+	if conf != nil && conf.ZipAsFolder != nil && conf.ZipAsFolder.AES != nil && conf.ZipAsFolder.AES.Enable {
 		_ = fp.Close()
 		_ = encFP
 		return nil, errors.Errorf("cannot create encrypted zip file '%s' not implemented", dir)
-		//todo: implement encryption
-		/*
-			aesConfig := conf.ZipAsFolder.AES
-			encFileName := fmt.Sprintf("%s.aes", dir)
-			encFP, err = writefs.Create(vfs, encFileName)
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot create encrypted zip file '%s.aes'", dir)
-			}
-			db, err := keepass2kms.LoadKeePassDBFromFile(aesConfig.KeepassFile.String(), aesConfig.KeepassKey.String())
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot load keepass file '%s'", aesConfig.KeepassFile)
-			}
-			client, err := keepass2kms.NewClient(db, filepath.Base(aesConfig.KeepassFile.String()))
-			if err != nil {
-				return nil, errors.Wrap(err, "cannot create keepass2kms client")
-			}
-			registry.RegisterKMSClient(client)
-			// todo: check for existence of key
-
-			// add a buffer to the file
-			newEncFPBuffer := bufio.NewWriterSize(encFP, 1024*1024)
-
-			csEncWriter, err := checksum.NewChecksumWriter(conf.ZipAsFolder.Digests, newEncFPBuffer)
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot create checksum writer for '%s'", encFileName)
-			}
-
-			encWriter, err := encrypt.NewEncryptWriterAESGCM(csEncWriter, []byte(path), nil)
-			if err != nil {
-				return nil, errors.Wrapf(err, "cannot create encrypt writer for '%s'", encFileName)
-			}
-
-			handle := encWriter.GetKeysetHandle()
-
-			if err := fsFactory.Register(zipfsrw.NewCreateFSEncryptedChecksumFunc(noCompression, zipDigests, string(aesConfig.KeepassEntry), logger.Logger()), "\\.zip$", writefs.HighFS); err != nil {
-				return nil, errors.Wrap(err, "cannot register FSEncryptedChecksum")
-			}
-		*/
-
+	}
+	var noCompression bool = true
+	var digests []checksum.DigestAlgorithm = nil
+	if conf != nil && conf.ZipAsFolder != nil {
+		noCompression = !conf.ZipAsFolder.Compress
+		digests = conf.ZipAsFolder.Digests
 	}
 	zipFS, err := zipfsw.NewFS(
 		fp,
 		true,
-		!conf.ZipAsFolder.Compress,
+		noCompression,
 		dir,
-		conf.ZipAsFolder.Digests,
+		digests,
 		func(css map[checksum.DigestAlgorithm]string) error {
 			for digestAlg, digest := range css {
 				digestFile := fmt.Sprintf("%s.%s", dir, digestAlg)

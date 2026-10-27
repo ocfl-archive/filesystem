@@ -60,6 +60,7 @@ func NewFSFileChecksumsEncrypted(baseFS fs.FS, path string, noCompression bool, 
 		keyURI:      keyUri,
 		csEncWriter: csEncWriter,
 		csEncBuffer: newEncFPBuffer,
+		encFP:       encFP,
 		logger:      logger,
 	}, nil
 }
@@ -74,6 +75,7 @@ type fsFileEncryptedChecksums struct {
 	keyURI      string
 	csEncWriter *checksum.ChecksumWriter
 	csEncBuffer *bufio.Writer
+	encFP       writefs.FileWrite
 	logger      zLogger.ZLogger
 }
 
@@ -113,12 +115,6 @@ func (zfs *fsFileEncryptedChecksums) Close() error {
 		}
 	}
 
-	if zfs.csEncBuffer == nil {
-		return errors.New("cannot close nil fsFileEncryptedChecksums.csEncBuffer")
-	}
-	if err := zfs.csEncBuffer.Flush(); err != nil {
-		errs = append(errs, err)
-	}
 	if zfs.encWriter == nil {
 		return errors.New("cannot flush nil fsFileEncryptedChecksums.encWriter")
 	}
@@ -130,6 +126,17 @@ func (zfs *fsFileEncryptedChecksums) Close() error {
 	}
 	if err := zfs.csEncWriter.Close(); err != nil {
 		errs = append(errs, err)
+	}
+	if zfs.csEncBuffer == nil {
+		return errors.New("cannot close nil fsFileEncryptedChecksums.csEncBuffer")
+	}
+	if err := zfs.csEncBuffer.Flush(); err != nil {
+		errs = append(errs, err)
+	}
+	if zfs.encFP != nil {
+		if err := zfs.encFP.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	if len(errs) == 0 {

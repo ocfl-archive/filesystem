@@ -16,20 +16,23 @@ type OpenRawZipCloserFS interface {
 }
 
 func NewFSFile(baseFS fs.FS, path string, logger zLogger.ZLogger) (*fsFile, error) {
-	stat, err := fs.Stat(baseFS, path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot stat file '%s'", path)
-	}
 	fp, err := baseFS.Open(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot open file '%s'", path)
 	}
+	stat, err := fp.Stat()
+	if err != nil {
+		_ = fp.Close()
+		return nil, errors.Wrapf(err, "cannot stat file '%s'", path)
+	}
 	fpAt, ok := fp.(io.ReaderAt)
 	if !ok {
+		_ = fp.Close()
 		return nil, errors.Errorf("cannot cast reader of file '%s' to io.ReaderAt", path)
 	}
 	zfs, err := NewFS(fpAt, stat.Size(), fmt.Sprintf("fsFile(%v/%s)", baseFS, path), logger)
 	if err != nil {
+		_ = fp.Close()
 		return nil, errors.Wrapf(err, "cannot open zipfs for file '%s'", path)
 	}
 	return &fsFile{
